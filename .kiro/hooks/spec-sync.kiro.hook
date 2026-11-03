@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Keep specs and README in sync",
+  "description": "When a spec changes, check the README and the other specs still agree with it.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [".kiro/specs/**/*.md"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A spec was edited. Check README.md and the other specs under .kiro/specs for statements that now contradict it, and list or fix the conflicts. Do not change code."
+  }
+}

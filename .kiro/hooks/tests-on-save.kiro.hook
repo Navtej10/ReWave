@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Run tests when sync or agent logic changes",
+  "description": "Runs typecheck and the test suite whenever code in apps/web/src/wave is saved.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["apps/web/src/wave/**/*.ts"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A file in apps/web/src/wave changed. Run `npm run typecheck && npm test`. If anything fails, fix it with the smallest possible diff and explain the cause in one sentence."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Enforce agent behavior rules",
+  "description": "Reviews agent persona changes against the agent-behavior steering rules.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["apps/api/agents.py", "apps/api/main.py"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Agent code changed. Verify it still follows .kiro/steering/agent-behavior.md (mention-only, cited sources, short output, no editing human blips). Report any violation and fix it."
+  }
+}

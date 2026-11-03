@@ -1,0 +1,20 @@
+/* Functional placeholder styles. The real visual design pass comes after the sync + agents work. */
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; }
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+header h1 { margin: 0; }
+header p { margin: 4px 0 16px; opacity: 0.7; }
+.compose { display: grid; gap: 8px; margin-bottom: 16px; }
+textarea, input { font: inherit; padding: 8px; width: 100%; box-sizing: border-box; }
+button { font: inherit; padding: 6px 12px; cursor: pointer; }
+button.link { background: none; border: none; padding: 0; text-decoration: underline; opacity: 0.7; }
+ul { list-style: none; padding-left: 20px; border-left: 2px solid rgba(128,128,128,0.35); }
+ul.thread { padding-left: 0; border-left: none; }
+.blip { margin: 12px 0; }
+.blip.agent > p:not(.sources) { font-style: italic; }
+.blip-head { display: flex; gap: 8px; align-items: baseline; }
+.tag { font-size: 0.75em; padding: 0 6px; border: 1px solid currentColor; border-radius: 4px; opacity: 0.7; }
+.sources a { margin-right: 6px; }
+.reply { display: flex; gap: 8px; margin-top: 6px; }
+.error { color: #c0392b; }
+.empty { opacity: 0.7; }

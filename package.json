@@ -1,0 +1,13 @@
+{
+  "name": "rewave",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/web", "apps/collab"],
+  "scripts": {
+    "dev:web": "npm run dev -w apps/web",
+    "dev:collab": "npm run dev -w apps/collab",
+    "dev:api": "cd apps/api && uvicorn main:app --reload --port 8000",
+    "typecheck": "npm run typecheck -w apps/web && npm run typecheck -w apps/collab",
+    "test": "npm run test -w apps/web"
+  }
+}
