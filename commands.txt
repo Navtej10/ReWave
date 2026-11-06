@@ -1,0 +1,17 @@
+# Run each app directly (root npm workspace scripts don't work on this exFAT drive,
+# since exFAT can't create the workspace symlinks).
+
+# 1: sync server
+cd apps\collab
+npm run dev
+
+# 2: agents API
+cd apps\api
+python -m venv .venv          # first time only
+.venv\Scripts\activate
+pip install -r requirements.txt   # first time only
+uvicorn main:app --reload --port 8000
+
+# 3: web app
+cd apps\web
+npm run dev

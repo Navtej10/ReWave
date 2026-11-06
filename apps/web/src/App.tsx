@@ -3,7 +3,24 @@ import { useWave } from "./wave/useWave";
 import { askAgent, mentionedAgents } from "./wave/agents";
 import type { BlipView } from "./wave/types";
 
-const waveId = (location.hash.replace("#", "") || "demo").replace(/[^a-z0-9-]/gi, "");
+// Hash is "#<wave>/<name>", e.g. "#demo/Navtej". Both windows share the wave id
+// but carry their own name, which is what the two-window demo needs.
+const [rawWave, rawName] = (location.hash.replace("#", "") || "demo").split("/");
+const waveId = (rawWave || "demo").replace(/[^a-z0-9-]/gi, "");
+
+function resolveName(): string {
+  const fromHash = (rawName ?? "").trim();
+  if (fromHash) {
+    localStorage.setItem(`rewave:name:${waveId}`, fromHash);
+    return fromHash;
+  }
+  const saved = localStorage.getItem(`rewave:name:${waveId}`);
+  if (saved) return saved;
+  const asked = (window.prompt("Your name for this wave?") ?? "").trim();
+  const name = asked || `guest-${Math.random().toString(36).slice(2, 6)}`;
+  localStorage.setItem(`rewave:name:${waveId}`, name);
+  return name;
+}
 
 function BlipNode(props: {
   blip: BlipView;
@@ -69,7 +86,7 @@ function BlipNode(props: {
 }
 
 export function App() {
-  const me = useMemo(() => ({ name: `guest-${Math.random().toString(36).slice(2, 6)}` }), []);
+  const me = useMemo(() => ({ name: resolveName() }), []);
   const { blips, peers, status, addBlip, editBlip } = useWave(waveId, me);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
