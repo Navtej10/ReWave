@@ -6,4 +6,5 @@
 - Playback (stretch): sort by `createdAt`, reveal one blip per step.
 
 ## Open question
+
 Do we need per-character history for playback? Start with per-blip steps; decide once the demo script is final.

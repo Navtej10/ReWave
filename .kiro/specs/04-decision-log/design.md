@@ -5,4 +5,5 @@
 - Import: split pasted text on blank lines or "From:" markers into blips authored "imported", then call @scribe.
 
 ## Open question
+
 Pinned log as a special blip vs. a separate Y.Map. Start with the special blip; revisit if editing gets awkward.

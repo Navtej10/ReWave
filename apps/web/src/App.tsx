@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
 import { useWave } from "./wave/useWave";
 import { askAgent, mentionedAgents } from "./wave/agents";
-import type { BlipView, TyperView } from "./wave/types";
+import { Header } from "./components/Header";
+import { DecisionLog } from "./components/DecisionLog";
+import { DisconnectedBanner } from "./components/DisconnectedBanner";
+import { BlipNode } from "./components/BlipNode";
+import { TypingBubble } from "./components/TypingBubble";
+import { EmptyState } from "./components/EmptyState";
+import { Composer } from "./components/Composer";
 
 // Hash is "#<wave>/<name>", e.g. "#demo/Navtej". Both windows share the wave id
 // but carry their own name, which is what the two-window demo needs.
@@ -20,131 +26,6 @@ function resolveName(): string {
   const name = asked || `guest-${Math.random().toString(36).slice(2, 6)}`;
   localStorage.setItem(`rewave:name:${waveId}`, name);
   return name;
-}
-
-/** Empty bubble with three dots, labeled with the typist's name. */
-function TypingBubble({ name }: { name: string }) {
-  return (
-    <li className="blip typing" aria-live="polite">
-      <div className="blip-head">
-        <strong>{name}</strong>
-      </div>
-      <p className="typing-bubble" aria-label={`${name} is typing`}>
-        <span className="dots" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </span>
-        <span className="typing-label">is typing...</span>
-      </p>
-    </li>
-  );
-}
-
-function BlipNode(props: {
-  blip: BlipView;
-  all: BlipView[];
-  typers: TyperView[];
-  editors: Map<string, string>;
-  onReply: (parentId: string, text: string) => void;
-  onEdit: (id: string, text: string) => void;
-  setTyping: (target: string | null) => void;
-  setEditing: (blipId: string | null) => void;
-}) {
-  const { blip, all, typers, editors, onReply, onEdit, setTyping, setEditing } = props;
-  const [replying, setReplying] = useState(false);
-  const [draft, setDraft] = useState("");
-  const children = all.filter((b) => b.parentId === blip.id);
-
-  // Any human blip is editable; agent blips never are. A lock held by someone else
-  // makes it temporarily read-only.
-  const lockedBy = editors.get(blip.id);
-  const editable = blip.kind === "human" && !lockedBy;
-  const childTypers = typers.filter((t) => t.target === blip.id);
-
-  return (
-    <li className={`blip ${blip.kind}`} id={`b-${blip.id}`}>
-      <div className="blip-head">
-        <strong>{blip.author}</strong>
-        {blip.kind === "agent" && <span className="tag">agent</span>}
-        {lockedBy && <span className="lock">{lockedBy} is editing...</span>}
-      </div>
-      {editable ? (
-        <textarea
-          value={blip.text}
-          onChange={(e) => {
-            onEdit(blip.id, e.target.value);
-            setEditing(blip.id); // keep the lock alive on each keystroke
-          }}
-          onFocus={() => setEditing(blip.id)}
-          onBlur={() => setEditing(null)}
-          rows={2}
-        />
-      ) : (
-        <p>{blip.text}</p>
-      )}
-      {blip.sources.length > 0 && (
-        <p className="sources">
-          From:{" "}
-          {blip.sources.map((s) => (
-            <a key={s} href={`#b-${s}`}>
-              {s}
-            </a>
-          ))}
-        </p>
-      )}
-      <button className="link" onClick={() => setReplying((v) => !v)}>
-        Reply
-      </button>
-      {replying && (
-        <div className="reply">
-          <input
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              setTyping(e.target.value.trim() ? blip.id : null);
-            }}
-            onFocus={() => {
-              if (draft.trim()) setTyping(blip.id);
-            }}
-            onBlur={() => setTyping(null)}
-            placeholder="Reply under this blip"
-          />
-          <button
-            onClick={() => {
-              if (!draft.trim()) return;
-              onReply(blip.id, draft.trim());
-              setDraft("");
-              setReplying(false);
-              setTyping(null);
-            }}
-          >
-            Send
-          </button>
-        </div>
-      )}
-      {(children.length > 0 || childTypers.length > 0) && (
-        <ul>
-          {children.map((c) => (
-            <BlipNode
-              key={c.id}
-              blip={c}
-              all={all}
-              typers={typers}
-              editors={editors}
-              onReply={onReply}
-              onEdit={onEdit}
-              setTyping={setTyping}
-              setEditing={setEditing}
-            />
-          ))}
-          {childTypers.map((t) => (
-            <TypingBubble key={`typing-${blip.id}-${t.name}`} name={t.name} />
-          ))}
-        </ul>
-      )}
-    </li>
-  );
 }
 
 export function App() {
@@ -170,65 +51,69 @@ export function App() {
     }
   }
 
+  function send() {
+    if (!draft.trim()) return;
+    void post(null, draft.trim());
+    setDraft("");
+    setTyping(null);
+  }
+
+  const threadEmpty = roots.length === 0 && rootTypers.length === 0;
+
   return (
-    <main>
-      <header>
-        <h1>Rewave</h1>
-        <p>
-          wave <code>#{waveId}</code> · {status} · here now: {peers.join(", ") || "just you"}
-        </p>
-      </header>
+    <div className="rw-app">
+      <Header waveId={waveId} status={status} peers={peers} />
 
-      <div className="compose">
-        <textarea
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            setTyping(e.target.value.trim() ? "root" : null);
-          }}
-          onFocus={() => {
-            if (draft.trim()) setTyping("root");
-          }}
-          onBlur={() => setTyping(null)}
-          placeholder="Start a thread. Mention @scribe, @skeptic or @researcher to bring an agent in."
-          rows={3}
-        />
-        <button
-          onClick={() => {
-            if (!draft.trim()) return;
-            void post(null, draft.trim());
-            setDraft("");
-            setTyping(null);
-          }}
-        >
-          Post blip
-        </button>
+      <main className="rw-main">
+        <div className="rw-column">
+          <DisconnectedBanner status={status} />
+          <DecisionLog />
+
+          {error && (
+            <p className="rw-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          {threadEmpty ? (
+            <EmptyState />
+          ) : (
+            <ul className="rw-thread">
+              {roots.map((b) => (
+                <BlipNode
+                  key={b.id}
+                  blip={b}
+                  all={blips}
+                  typers={typers}
+                  editors={editors}
+                  myName={me.name}
+                  onReply={(p, t) => void post(p, t)}
+                  onEdit={editBlip}
+                  setTyping={setTyping}
+                  setEditing={setEditing}
+                />
+              ))}
+              {rootTypers.map((t) => (
+                <TypingBubble key={`typing-root-${t.name}`} name={t.name} />
+              ))}
+            </ul>
+          )}
+        </div>
+      </main>
+
+      <div className="rw-composer-dock">
+        <div className="rw-column">
+          <Composer
+            value={draft}
+            onChange={(v) => {
+              setDraft(v);
+              setTyping(v.trim() ? "root" : null);
+            }}
+            onSend={send}
+            placeholder="Start a thread. Mention @scribe, @skeptic or @researcher to bring an agent in."
+          />
+        </div>
       </div>
-
-      {error && <p className="error">{error}</p>}
-
-      {roots.length === 0 && rootTypers.length === 0 ? (
-        <p className="empty">This wave is empty. Post the first blip.</p>
-      ) : (
-        <ul className="thread">
-          {roots.map((b) => (
-            <BlipNode
-              key={b.id}
-              blip={b}
-              all={blips}
-              typers={typers}
-              editors={editors}
-              onReply={(p, t) => void post(p, t)}
-              onEdit={editBlip}
-              setTyping={setTyping}
-              setEditing={setEditing}
-            />
-          ))}
-          {rootTypers.map((t) => (
-            <TypingBubble key={`typing-root-${t.name}`} name={t.name} />
-          ))}
-        </ul>
-      )}
-    </main>
+    </div>
   );
 }

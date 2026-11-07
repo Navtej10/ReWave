@@ -1,0 +1,18 @@
+{
+  // Markdownlint config for Rewave docs (specs, steering, README).
+  // We keep structural rules on (blank lines around headings/lists, etc.)
+  // but turn off rules that fight this project's intentional doc style.
+  "default": true,
+
+  // Prose in specs is written in full sentences, not wrapped at a fixed
+  // column. Line-length limits would force reflowing that hurts diffs.
+  "MD013": false,
+
+  // Every requirement section intentionally repeats a "#### Acceptance
+  // criteria" heading, so duplicate-heading text is expected here.
+  "MD024": false,
+
+  // Specs use "<name>" and "<waveId>" as placeholder notation in prose,
+  // which the linter otherwise reads as inline HTML tags.
+  "MD033": false
+}

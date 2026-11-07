@@ -6,5 +6,6 @@
 - Agent output is added to the wave as a blip with `kind: "agent"`, so it syncs to everyone like any other blip.
 
 ## Risks
+
 - Duplicate agent replies if several clients react to the same mention. Mitigation: only the author's client triggers the call.
 - Hallucinated summaries. Mitigation: mandatory citations and dropped unknown ids.

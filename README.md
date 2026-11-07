@@ -58,8 +58,8 @@ npm run typecheck && npm test      # types + unit + property-based tests
 
 Fill this in from your real experience. Judges score depth and honesty here.
 
-- **Specs:** `.kiro/specs/` (four feature specs: requirements, design, tasks)
-- **Steering:** `.kiro/steering/` (product rules, stack conventions, agent behavior rules)
+- **Specs:** `.kiro/specs/` (five feature specs: requirements, design, tasks)
+- **Steering:** `.kiro/steering/` (product rules, stack conventions, agent behavior rules, design system)
 - **Hooks:** `.kiro/hooks/` (tests on save, spec/README consistency, agent-rule check)
 - **MCP:** `.kiro/settings/mcp.json` (fetch server for `@researcher`)
 - **Property-based testing:** `apps/web/src/wave/applyDiff.property.test.ts`
