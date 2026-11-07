@@ -13,7 +13,7 @@ A wave is a shared, real-time space that several people (and agents) edit togeth
 #### Acceptance criteria
 
 1. WHEN a user opens the app with `#<waveId>` THEN the system SHALL load that wave and show all its blips.
-2. WHEN no id is given THEN the system SHALL use the wave `demo`.
+2. WHEN no id is given THEN the system SHALL show the wave list with no wave open (superseded by spec 06 "Multiple waves" R3.2; earlier single-wave builds defaulted to the wave `demo`).
 3. IF the sync server is unreachable THEN the system SHALL show a connection status and keep the page usable.
 
 ### R2: See others type in real time

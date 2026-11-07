@@ -20,6 +20,7 @@ was useless without other people on it.
 
 ## Features
 
+- An inbox of waves: a wave list on the left, the open wave on the right, with unread badges and live presence
 - Shared waves with live co-editing and presence
 - Inline threaded blips, editable in place
 - Agents you summon with `@scribe`, `@skeptic`, `@researcher` (they never speak unprompted)
@@ -42,7 +43,8 @@ cd apps/api && python -m venv .venv && source .venv/bin/activate \
 npm run dev:web                    # terminal 3: app on http://localhost:5173
 ```
 
-Open `http://localhost:5173/#demo` in two browser windows to see live sync.
+Open `http://localhost:5173` to land on the inbox, then click "New wave" (or open
+`#demo` directly). Open the same wave in two browser windows to see live sync.
 Try: post a blip, then reply with `@scribe summarize this`.
 
 ```bash
@@ -58,7 +60,7 @@ npm run typecheck && npm test      # types + unit + property-based tests
 
 Fill this in from your real experience. Judges score depth and honesty here.
 
-- **Specs:** `.kiro/specs/` (five feature specs: requirements, design, tasks)
+- **Specs:** `.kiro/specs/` (six feature specs: requirements, design, tasks)
 - **Steering:** `.kiro/steering/` (product rules, stack conventions, agent behavior rules, design system)
 - **Hooks:** `.kiro/hooks/` (tests on save, spec/README consistency, agent-rule check)
 - **MCP:** `.kiro/settings/mcp.json` (fetch server for `@researcher`)

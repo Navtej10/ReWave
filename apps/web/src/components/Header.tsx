@@ -1,27 +1,13 @@
-import { ConnectionStatus } from "./ConnectionStatus";
-import { PresenceBar } from "./PresenceBar";
-
-/** App header: wordmark, wave id chip, connection status, presence avatars. */
-export function Header({
-  waveId,
-  status,
-  peers,
-}: {
-  waveId: string;
-  status: string;
-  peers: string[];
-}) {
+/** App header: the wordmark and a one-line tagline. Per-wave connection status and
+ *  presence now live in the open wave's panel bar (see WavePanel). */
+export function Header() {
   return (
     <header className="rw-header">
       <div className="rw-header-left">
         <span className="rw-wordmark">Rewave</span>
-        <span className="rw-wave-chip" title={`Wave ${waveId}`}>
-          #{waveId}
-        </span>
       </div>
       <div className="rw-header-right">
-        <ConnectionStatus status={status} />
-        <PresenceBar names={peers} />
+        <span className="rw-header-tagline">Turn a debate into a decision</span>
       </div>
     </header>
   );

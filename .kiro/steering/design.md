@@ -129,6 +129,32 @@ Ctrl/Cmd+Enter sends.
 Reserved slot above the thread. Collapsible card, title "Decision log", empty state
 "No decisions yet. Ask @scribe to summarize." No logic yet — placeholder only.
 
+### Inbox shell (`.rw-inbox`)
+Two panels. Desktop (>= 900px): CSS grid `320px 1fr` — wave list left, open wave right.
+Below 900px: one column; the shell toggles which panel shows via `data-view="list"|"wave"`.
+The open panel on mobile gets a Back button (`.rw-back`, >= 44px, carries text + icon) that
+returns to the list.
+
+### Wave list (`.rw-wavelist`)
+Left panel, own `--rw-surface` column with a hairline right border. Header holds a primary
+"New wave" button (accent) and a search box (`.rw-wavelist-search`, `--rw-surface-2`,
+`--rw-radius-sm`). The scrollable list is a `role="listbox"` with roving tabindex: arrow
+keys move selection, Enter opens. Empty state: "No waves yet. Start one." + a button.
+
+### Wave row (`.rw-waverow`)
+Rounded `--rw-radius-md` button-like row, `--rw-space-3` padding. Line one: derived title
+(600) + relative time (muted, xs). Line two: one-line snippet with author (muted, sm,
+truncated). Footer: up to 3 participant avatars (reuse `.rw-avatar`, collapse to `+N`), a
+presence dot (`.rw-waverow-presence`, `--rw-ok`) when someone else is inside, and a bold
+unread badge (`.rw-unread`, pill, `--rw-accent` background, white text) on the right. The
+selected row is highlighted (`--rw-accent-weak`, accent left edge) and carries
+`aria-current="true"`. Presence and unread carry text/number, never color alone.
+
+### Editable wave title (`.rw-wavetitle`)
+Top of the open wave. A borderless input styled as an `--rw-text-lg` heading; hover/focus
+reveals a subtle border and a pencil affordance. Commits on blur or Enter; empty commits
+leave the title empty (the row falls back per the title rules). `aria-label="Wave title"`.
+
 ## Accessibility & responsive
 - Works at 1280px (comfortable) and 390px (single column, composer full width).
 - Touch targets >= 44px on mobile.

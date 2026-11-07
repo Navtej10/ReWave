@@ -25,6 +25,14 @@ export function PencilIcon({ className }: IconProps) {
   );
 }
 
+export function BackIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M10.3 2.3L4.6 8l5.7 5.7 1.1-1.1L6.8 8l4.6-4.6-1.1-1.1z" />
+    </svg>
+  );
+}
+
 export function SendIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false">

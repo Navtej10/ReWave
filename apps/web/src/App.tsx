@@ -1,117 +1,129 @@
-import { useMemo, useState } from "react";
-import { useWave } from "./wave/useWave";
-import { askAgent, mentionedAgents } from "./wave/agents";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useWaveIndex } from "./wave/useWaveIndex";
+import { deriveTitle } from "./wave/waveIndex";
 import { Header } from "./components/Header";
-import { DecisionLog } from "./components/DecisionLog";
-import { DisconnectedBanner } from "./components/DisconnectedBanner";
-import { BlipNode } from "./components/BlipNode";
-import { TypingBubble } from "./components/TypingBubble";
-import { EmptyState } from "./components/EmptyState";
-import { Composer } from "./components/Composer";
+import { WaveList } from "./components/WaveList";
+import { WavePanel } from "./components/WavePanel";
 
-// Hash is "#<wave>/<name>", e.g. "#demo/Navtej". Both windows share the wave id
-// but carry their own name, which is what the two-window demo needs.
-const [rawWave, rawName] = (location.hash.replace("#", "") || "demo").split("/");
-const waveId = (rawWave || "demo").replace(/[^a-z0-9-]/gi, "");
+/** Parse the hash into a wave id. Supports the legacy "#<wave>/<name>" form (spec 01):
+ *  the part before the first "/" is the wave id; a trailing name is honored once below. */
+function parseHash(): { waveId: string | null; nameFromHash: string } {
+  const [rawWave, rawName] = (location.hash.replace(/^#/, "") || "").split("/");
+  const waveId = (rawWave || "").replace(/[^a-z0-9-]/gi, "");
+  return { waveId: waveId || null, nameFromHash: (rawName ?? "").trim() };
+}
 
-function resolveName(): string {
-  const fromHash = (rawName ?? "").trim();
-  if (fromHash) {
-    localStorage.setItem(`rewave:name:${waveId}`, fromHash);
-    return fromHash;
+/** Resolve the current user's name: ?name= query, then legacy hash name, then saved, then
+ *  a prompt. A single app-wide name (not per-wave) now that the inbox spans many waves. */
+function resolveName(nameFromHash: string): string {
+  const fromQuery = new URLSearchParams(location.search).get("name")?.trim();
+  const chosen = fromQuery || nameFromHash;
+  if (chosen) {
+    localStorage.setItem("rewave:name", chosen);
+    return chosen;
   }
-  const saved = localStorage.getItem(`rewave:name:${waveId}`);
+  const saved = localStorage.getItem("rewave:name");
   if (saved) return saved;
-  const asked = (window.prompt("Your name for this wave?") ?? "").trim();
+  const asked = (window.prompt("Your name?") ?? "").trim();
   const name = asked || `guest-${Math.random().toString(36).slice(2, 6)}`;
-  localStorage.setItem(`rewave:name:${waveId}`, name);
+  localStorage.setItem("rewave:name", name);
   return name;
 }
 
 export function App() {
-  const me = useMemo(() => ({ name: resolveName() }), []);
-  const { blips, peers, status, typers, editors, addBlip, editBlip, setTyping, setEditing } = useWave(waveId, me);
-  const [draft, setDraft] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const roots = blips.filter((b) => b.parentId === null);
-  const rootTypers = typers.filter((t) => t.target === "root");
+  const initial = useMemo(parseHash, []);
+  const me = useMemo(() => ({ name: resolveName(initial.nameFromHash) }), [initial.nameFromHash]);
 
-  async function post(parentId: string | null, text: string) {
-    setError(null);
-    const id = addBlip({ parentId, text, author: me.name });
-    const asked = mentionedAgents(text);
-    for (const agent of asked) {
-      try {
-        const snapshot = [...blips, { id, parentId, author: me.name, kind: "human" as const, text, createdAt: Date.now(), sources: [] }];
-        const out = await askAgent(agent, snapshot);
-        addBlip({ parentId: id, text: out.text, author: `@${agent}`, kind: "agent", sources: out.sources });
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      }
-    }
-  }
+  const [waveId, setWaveId] = useState<string | null>(initial.waveId);
 
-  function send() {
-    if (!draft.trim()) return;
-    void post(null, draft.trim());
-    setDraft("");
-    setTyping(null);
-  }
+  // Hash is the source of truth for the open wave; keep state in sync with Back/Forward.
+  useEffect(() => {
+    const onHash = () => setWaveId(parseHash().waveId);
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
-  const threadEmpty = roots.length === 0 && rootTypers.length === 0;
+  const {
+    waves,
+    presence,
+    websocket,
+    createWave,
+    renameWave,
+    recordBlip,
+    markSeenMine,
+    markRead,
+    unreadOf,
+  } = useWaveIndex(me, waveId);
+
+  const openWave = useCallback(
+    (id: string) => {
+      if (location.hash.replace(/^#/, "") !== id) location.hash = id; // pushes history (Back works)
+      setWaveId(id);
+      markRead(id);
+    },
+    [markRead],
+  );
+
+  const backToList = useCallback(() => {
+    // Clear the hash; this is a history entry so browser Back/Forward behaves (R9.3).
+    if (location.hash) location.hash = "";
+    setWaveId(null);
+  }, []);
+
+  const onNewWave = useCallback(() => {
+    const id = createWave();
+    openWave(id);
+  }, [createWave, openWave]);
+
+  // Mark a freshly opened wave read once its summary is known (covers deep-links).
+  useEffect(() => {
+    if (waveId) markRead(waveId);
+  }, [waveId, markRead]);
+
+  const current = waveId ? waves.find((w) => w.id === waveId) : undefined;
+  const displayTitle = current ? deriveTitle(current) : "Untitled wave";
+  const rawTitle = current?.title ?? "";
 
   return (
     <div className="rw-app">
-      <Header waveId={waveId} status={status} peers={peers} />
+      <Header />
 
-      <main className="rw-main">
-        <div className="rw-column">
-          <DisconnectedBanner status={status} />
-          <DecisionLog />
+      <div className="rw-inbox" data-view={waveId ? "wave" : "list"}>
+        <WaveList
+          waves={waves}
+          selectedId={waveId}
+          presence={presence}
+          unreadOf={unreadOf}
+          onOpen={openWave}
+          onNewWave={onNewWave}
+        />
 
-          {error && (
-            <p className="rw-error" role="alert">
-              {error}
-            </p>
-          )}
-
-          {threadEmpty ? (
-            <EmptyState />
+        <div className="rw-inbox-main">
+          {waveId ? (
+            <WavePanel
+              key={waveId}
+              waveId={waveId}
+              me={me}
+              websocket={websocket}
+              title={displayTitle}
+              rawTitle={rawTitle}
+              onRename={(t) => renameWave(waveId, t)}
+              onBlipAdded={(blip) => {
+                recordBlip(waveId, blip);
+                markSeenMine(waveId); // my own blips never count as unread (R5.3)
+              }}
+              onBack={backToList}
+            />
           ) : (
-            <ul className="rw-thread">
-              {roots.map((b) => (
-                <BlipNode
-                  key={b.id}
-                  blip={b}
-                  all={blips}
-                  typers={typers}
-                  editors={editors}
-                  myName={me.name}
-                  onReply={(p, t) => void post(p, t)}
-                  onEdit={editBlip}
-                  setTyping={setTyping}
-                  setEditing={setEditing}
-                />
-              ))}
-              {rootTypers.map((t) => (
-                <TypingBubble key={`typing-root-${t.name}`} name={t.name} />
-              ))}
-            </ul>
+            <div className="rw-inbox-blank">
+              <div className="rw-inbox-blank-mark" aria-hidden="true">
+                〜
+              </div>
+              <p className="rw-inbox-blank-text">
+                Select a wave on the left, or start a new one.
+              </p>
+            </div>
           )}
-        </div>
-      </main>
-
-      <div className="rw-composer-dock">
-        <div className="rw-column">
-          <Composer
-            value={draft}
-            onChange={(v) => {
-              setDraft(v);
-              setTyping(v.trim() ? "root" : null);
-            }}
-            onSend={send}
-            placeholder="Start a thread. Mention @scribe, @skeptic or @researcher to bring an agent in."
-          />
         </div>
       </div>
     </div>

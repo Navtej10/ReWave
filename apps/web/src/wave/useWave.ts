@@ -1,9 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
-import { HocuspocusProvider } from "@hocuspocus/provider";
+import { HocuspocusProvider, type HocuspocusProviderWebsocket } from "@hocuspocus/provider";
 import { applyDiff } from "./applyDiff";
 import { resolveLocks, type EditClaim } from "./resolveLocks";
 import type { BlipKind, BlipView, TypingTarget, TyperView } from "./types";
+
+/** Reported to the index layer whenever this client adds a blip (multi-wave, R1.3/R5.3). */
+export interface AddedBlip {
+  author: string;
+  text: string;
+  at: number;
+}
+
+export interface UseWaveOptions {
+  /**
+   * Share one socket across the index and the open wave (multi-wave R2). When given, the
+   * provider attaches to this socket instead of opening its own connection to COLLAB_URL.
+   */
+  websocket?: HocuspocusProviderWebsocket;
+  /** Called after this client adds a blip, so App can update the shared wave index. */
+  onBlipAdded?: (blip: AddedBlip) => void;
+}
 
 const COLLAB_URL = import.meta.env.VITE_COLLAB_URL ?? "ws://127.0.0.1:1234";
 
@@ -33,7 +50,8 @@ interface PresenceState {
   editing?: string | null;
 }
 
-export function useWave(waveId: string, me: { name: string }) {
+export function useWave(waveId: string, me: { name: string }, options: UseWaveOptions = {}) {
+  const { websocket, onBlipAdded } = options;
   const ydoc = useMemo(() => new Y.Doc(), [waveId]);
   const blipsArr = useMemo(() => ydoc.getArray<Y.Map<unknown>>("blips"), [ydoc]);
   const [blips, setBlips] = useState<BlipView[]>([]);
@@ -44,6 +62,9 @@ export function useWave(waveId: string, me: { name: string }) {
 
   // Live handle to the provider so the setTyping/setEditing callbacks can reach awareness.
   const providerRef = useRef<HocuspocusProvider | null>(null);
+  // Keep the latest onBlipAdded reachable from the stable addBlip callback.
+  const onBlipAddedRef = useRef(onBlipAdded);
+  onBlipAddedRef.current = onBlipAdded;
   // Throttle + idle bookkeeping for typing.
   const lastTypingTarget = useRef<TypingTarget | null>(null);
   const typingThrottleUntil = useRef(0);
@@ -51,7 +72,10 @@ export function useWave(waveId: string, me: { name: string }) {
   const editIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const provider = new HocuspocusProvider({ url: COLLAB_URL, name: waveId, document: ydoc });
+    // Share the index's socket when one is supplied (R2), else open our own connection.
+    const provider = websocket
+      ? new HocuspocusProvider({ websocketProvider: websocket, name: waveId, document: ydoc })
+      : new HocuspocusProvider({ url: COLLAB_URL, name: waveId, document: ydoc });
     providerRef.current = provider;
     provider.on("status", ({ status }: { status: string }) => setStatus(status));
     provider.setAwarenessField("user", { name: me.name });
@@ -104,7 +128,7 @@ export function useWave(waveId: string, me: { name: string }) {
       provider.destroy();
       providerRef.current = null;
     };
-  }, [waveId, ydoc, blipsArr, me.name]);
+  }, [waveId, ydoc, blipsArr, me.name, websocket]);
 
   const addBlip = useCallback(
     (opts: { parentId: string | null; text: string; author: string; kind?: BlipKind; sources?: string[] }) => {
@@ -120,6 +144,7 @@ export function useWave(waveId: string, me: { name: string }) {
         blip.set("sources", opts.sources ?? []);
         blip.set("text", new Y.Text(opts.text));
       });
+      onBlipAddedRef.current?.({ author: opts.author, text: opts.text, at: Date.now() });
       return id;
     },
     [ydoc, blipsArr],
