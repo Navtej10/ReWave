@@ -13,3 +13,13 @@ export interface BlipView {
 }
 
 export type AgentName = "scribe" | "skeptic" | "researcher";
+
+/** Where a user is composing: a reply under a parent blip, or a new top-level blip. */
+export type TypingTarget = string | "root";
+
+/** Someone (not you) currently typing, as surfaced by useWave(). */
+export interface TyperView {
+  /** Parent blip id, or "root" for a new top-level blip. */
+  target: TypingTarget;
+  name: string;
+}

@@ -18,3 +18,24 @@ ul.thread { padding-left: 0; border-left: none; }
 .reply { display: flex; gap: 8px; margin-top: 6px; }
 .error { color: #c0392b; }
 .empty { opacity: 0.7; }
+
+/* Presence: typing indicator + edit lock label */
+.lock { font-size: 0.75em; opacity: 0.7; font-style: italic; }
+.blip.typing { opacity: 0.85; }
+.typing-bubble { display: inline-flex; align-items: center; gap: 8px; margin: 4px 0; padding: 6px 12px; border-radius: 14px; background: rgba(128,128,128,0.15); }
+.typing-label { font-size: 0.85em; opacity: 0.7; }
+.dots { display: inline-flex; gap: 4px; }
+.dots span { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.4; animation: dot-blink 1.4s infinite ease-in-out both; }
+.dots span:nth-child(1) { animation-delay: 0s; }
+.dots span:nth-child(2) { animation-delay: 0.2s; }
+.dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dot-blink {
+  0%, 80%, 100% { opacity: 0.4; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* Respect reduced-motion: static dots, no animation. */
+@media (prefers-reduced-motion: reduce) {
+  .dots span { animation: none; opacity: 0.6; }
+}
