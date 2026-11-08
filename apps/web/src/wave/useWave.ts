@@ -12,12 +12,27 @@ export interface AddedBlip {
   at: number;
 }
 
+/** A live background connection the inbox already holds for a joined wave. */
+export interface SharedConn {
+  provider: HocuspocusProvider;
+  doc: Y.Doc;
+}
+
 export interface UseWaveOptions {
   /**
    * Share one socket across the index and the open wave (multi-wave R2). When given, the
    * provider attaches to this socket instead of opening its own connection to COLLAB_URL.
    */
   websocket?: HocuspocusProviderWebsocket;
+  /**
+   * Reuse the inbox's existing background connection for this wave instead of attaching a
+   * second provider with the same document name to the shared socket. The shared socket
+   * keys its providerMap by document name (one provider per name), so a second provider for
+   * an already-joined wave collides with the background one and never syncs. Returns null
+   * until the inbox's reconcile effect has created the connection (a tick after join), so
+   * useWave retries briefly. See useMyWaves.getConn.
+   */
+  getConn?: (waveId: string) => SharedConn | null;
   /** Called after this client adds a blip, so App can update the shared wave index. */
   onBlipAdded?: (blip: AddedBlip) => void;
 }
@@ -51,14 +66,33 @@ interface PresenceState {
 }
 
 export function useWave(waveId: string, me: { name: string }, options: UseWaveOptions = {}) {
-  const { websocket, onBlipAdded } = options;
-  const ydoc = useMemo(() => new Y.Doc(), [waveId]);
-  const blipsArr = useMemo(() => ydoc.getArray<Y.Map<unknown>>("blips"), [ydoc]);
+  const { websocket, getConn, onBlipAdded } = options;
+
+  // The active connection for this wave. Prefer the inbox's existing background connection
+  // (getConn) so we don't attach a second provider with the same document name to the shared
+  // socket — that collision was leaving a just-joined wave stuck on "connecting". The
+  // connection may not exist on the first render after join (the inbox creates it a tick
+  // later), so we resolve it in an effect with a brief retry and hold it in state. Without a
+  // getConn (e.g. tests, single-wave use) we own a provider on the shared socket or our own
+  // URL connection, exactly as before.
+  const [conn, setConn] = useState<{ provider: HocuspocusProvider; doc: Y.Doc } | null>(null);
+  // getConn is read inside an effect; keep the latest without re-subscribing the effect.
+  const getConnRef = useRef(getConn);
+  getConnRef.current = getConn;
+
+  const ydoc = conn?.doc ?? null;
+  const blipsArr = useMemo(() => ydoc?.getArray<Y.Map<unknown>>("blips") ?? null, [ydoc]);
+  // Per-wave metadata lives inside the wave's own doc (multi-wave R2): title + createdAt.
+  const metaMap = useMemo(() => ydoc?.getMap<unknown>("meta") ?? null, [ydoc]);
   const [blips, setBlips] = useState<BlipView[]>([]);
   const [peers, setPeers] = useState<string[]>([]);
   const [status, setStatus] = useState<string>("connecting");
   const [typers, setTypers] = useState<TyperView[]>([]);
   const [editors, setEditors] = useState<Map<string, string>>(new Map());
+  const [meta, setMeta] = useState<{ title: string; createdAt: number }>({
+    title: "",
+    createdAt: 0,
+  });
 
   // Live handle to the provider so the setTyping/setEditing callbacks can reach awareness.
   const providerRef = useRef<HocuspocusProvider | null>(null);
@@ -71,18 +105,68 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
   const typingIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Resolve the connection for this wave. If getConn is supplied, reuse the inbox's
+  // background provider+doc (retrying briefly until it exists); otherwise create our own.
   useEffect(() => {
-    // Share the index's socket when one is supplied (R2), else open our own connection.
-    const provider = websocket
-      ? new HocuspocusProvider({ websocketProvider: websocket, name: waveId, document: ydoc })
-      : new HocuspocusProvider({ url: COLLAB_URL, name: waveId, document: ydoc });
+    let cancelled = false;
+    let owned: { provider: HocuspocusProvider; doc: Y.Doc } | null = null;
+
+    const resolve = getConnRef.current;
+    if (resolve) {
+      let attempts = 0;
+      const tryResolve = () => {
+        if (cancelled) return;
+        const shared = resolve(waveId);
+        if (shared) {
+          setConn(shared);
+          return;
+        }
+        if (attempts++ < 40) queueMicrotask(tryResolve);
+      };
+      tryResolve();
+    } else {
+      // No shared connection available: own one (shared socket if given, else our own URL).
+      const doc = new Y.Doc();
+      const provider = websocket
+        ? new HocuspocusProvider({ websocketProvider: websocket, name: waveId, document: doc })
+        : new HocuspocusProvider({ url: COLLAB_URL, name: waveId, document: doc });
+      owned = { provider, doc };
+      setConn(owned);
+    }
+
+    return () => {
+      cancelled = true;
+      setConn(null);
+      // Only tear down a connection WE created. A reused background connection is owned by
+      // the inbox (useMyWaves) and must outlive this panel.
+      if (owned) {
+        owned.provider.destroy();
+        owned.doc.destroy();
+      }
+    };
+  }, [waveId, websocket]);
+
+  useEffect(() => {
+    if (!conn || !blipsArr || !metaMap) return;
+    const provider = conn.provider;
     providerRef.current = provider;
-    provider.on("status", ({ status }: { status: string }) => setStatus(status));
+    const onStatus = ({ status }: { status: string }) => setStatus(status);
+    provider.on("status", onStatus);
+    // A reused background provider may already be synced; seed status from it.
+    setStatus((provider as unknown as { status?: string }).status ?? "connecting");
     provider.setAwarenessField("user", { name: me.name });
 
     const refresh = () => setBlips(readBlips(blipsArr));
     blipsArr.observeDeep(refresh);
     refresh();
+
+    const refreshMeta = () =>
+      setMeta({
+        title: (metaMap.get("title") as string | undefined) ?? "",
+        createdAt: (metaMap.get("createdAt") as number | undefined) ?? 0,
+      });
+    metaMap.observe(refreshMeta);
+    refreshMeta();
 
     const awareness = provider.awareness;
     const myId = awareness?.clientID;
@@ -122,16 +206,30 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
 
     return () => {
       blipsArr.unobserveDeep(refresh);
+      metaMap.unobserve(refreshMeta);
       awareness?.off("change", refreshPresence);
+      provider.off("status", onStatus);
+      // Clear only awareness fields WE set, so a reused background connection is left clean
+      // (it keeps publishing just `user`; typing/editing must not linger after we unmount).
+      awareness?.setLocalStateField("typing", null);
+      awareness?.setLocalStateField("editing", null);
       if (typingIdleTimer.current) clearTimeout(typingIdleTimer.current);
       if (editIdleTimer.current) clearTimeout(editIdleTimer.current);
-      provider.destroy();
       providerRef.current = null;
     };
-  }, [waveId, ydoc, blipsArr, me.name, websocket]);
+  }, [conn, blipsArr, metaMap, me.name]);
+
+  /** Rename the wave by editing its own `meta.title` (multi-wave R2.3). */
+  const renameMeta = useCallback(
+    (title: string) => {
+      metaMap?.set("title", title.trim());
+    },
+    [metaMap],
+  );
 
   const addBlip = useCallback(
     (opts: { parentId: string | null; text: string; author: string; kind?: BlipKind; sources?: string[] }) => {
+      if (!ydoc || !blipsArr) return "";
       const id = crypto.randomUUID().slice(0, 8);
       const blip = new Y.Map<unknown>();
       ydoc.transact(() => {
@@ -152,6 +250,7 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
 
   const editBlip = useCallback(
     (id: string, text: string) => {
+      if (!blipsArr) return;
       const m = blipsArr.toArray().find((b) => b.get("id") === id);
       const t = m?.get("text") as Y.Text | undefined;
       if (t) applyDiff(t, text);
@@ -219,5 +318,17 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
     }, EDIT_IDLE_MS);
   }, []);
 
-  return { blips, peers, status, typers, editors, addBlip, editBlip, setTyping, setEditing };
+  return {
+    blips,
+    peers,
+    status,
+    typers,
+    editors,
+    meta,
+    addBlip,
+    editBlip,
+    setTyping,
+    setEditing,
+    renameMeta,
+  };
 }

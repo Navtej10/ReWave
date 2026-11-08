@@ -1,8 +1,9 @@
-// Pure wave-index logic. No Yjs, no React, no DOM — just plain data transforms so the
-// index update, unread, sort, filter and title-fallback rules can be unit- and
-// property-tested in isolation. See .kiro/specs/06-multi-wave/design.md.
+// Pure wave-summary logic. No Yjs, no React, no DOM — just plain data transforms so the
+// row-summary fold, unread, sort, filter and title-fallback rules can be unit- and
+// property-tested in isolation. These summaries are derived in the browser from each wave's
+// OWN live document (there is no shared index). See .kiro/specs/06-multi-wave/design.md.
 
-/** Plain metadata record stored per wave in the shared "index" document. */
+/** Plain, derived summary record for one wave's list row. */
 export interface WaveMeta {
   title: string;
   createdAt: number;

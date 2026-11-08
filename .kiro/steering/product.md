@@ -16,4 +16,7 @@ One shared object that was both a conversation and a live document, built from
 ## Rules for every feature
 - If a feature does not help a thread end in a decision, cut it.
 - Every AI-generated claim links back to the blips it came from.
+- Waves are private: no global list of waves or users. A user sees only waves they created
+  or joined via a share link (the unguessable wave id is the capability). No accounts or
+  passwords.
 - Out of scope: federation, gadgets, robot API, email bridge.

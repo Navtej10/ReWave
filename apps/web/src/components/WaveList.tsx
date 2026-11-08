@@ -10,8 +10,9 @@ export function WaveList(props: {
   unreadOf: (waveId: string) => number;
   onOpen: (waveId: string) => void;
   onNewWave: () => void;
+  onJoinWave: () => void;
 }) {
-  const { waves, selectedId, presence, unreadOf, onOpen, onNewWave } = props;
+  const { waves, selectedId, presence, unreadOf, onOpen, onNewWave, onJoinWave } = props;
   const [query, setQuery] = useState("");
   const visible = filterWaves(waves, query);
 
@@ -56,9 +57,14 @@ export function WaveList(props: {
   return (
     <div className="rw-wavelist">
       <div className="rw-wavelist-head">
-        <button type="button" className="rw-newwave" onClick={onNewWave}>
-          + New wave
-        </button>
+        <div className="rw-wavelist-actions">
+          <button type="button" className="rw-newwave" onClick={onNewWave}>
+            + New wave
+          </button>
+          <button type="button" className="rw-joinwave" onClick={onJoinWave}>
+            Join Wave
+          </button>
+        </div>
         <input
           type="search"
           className="rw-wavelist-search"

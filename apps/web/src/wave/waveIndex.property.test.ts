@@ -26,7 +26,7 @@ describe("unread (property-based)", () => {
     fc.assert(
       fc.property(fc.array(blipArb, { maxLength: 50 }), (blips) => {
         // Simulate a wave where every blip is mine. The own-blip path advances last-seen in
-        // lockstep with blipCount (see useWaveIndex.markSeenMine), so unread must stay 0.
+        // lockstep with blipCount (see useMyWaves.markSeenMine), so unread must stay 0.
         let meta: WaveMeta | undefined;
         let lastSeen = 0;
         for (const blip of blips) {
