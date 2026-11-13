@@ -26,6 +26,15 @@
   --success: #7fa66b;
   --danger: #c4503a;
 
+  /* Rich content: warm-brown scrim (never pure black) and four muted ink tones for code.
+     All four code tones clear ~4.5:1 on --paper-deep. */
+  --scrim-warm: rgba(58, 40, 26, 0.7);
+  --scrim-soft: rgba(58, 40, 26, 0.45);
+  --code-kw: #8a3b25;
+  --code-str: #3d5f3a;
+  --code-com: #6b6054;
+  --code-num: #35607f;
+
   /* Shape */
   --radius-sm: 8px;
   --radius-md: 12px;

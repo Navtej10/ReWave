@@ -15,7 +15,11 @@ export interface WaveMeta {
 }
 
 /** A row-ready view of one wave: its metadata plus its id. */
-export type WaveSummary = WaveMeta & { id: string };
+export type WaveSummary = WaveMeta & {
+  id: string;
+  /** Extra searchable text: attachment filenames and poll questions. */
+  searchText?: string;
+};
 
 /** One blip's contribution to a wave's summary. */
 export interface BlipMetaInput {
@@ -96,7 +100,7 @@ export function filterWaves(summaries: WaveSummary[], query: string): WaveSummar
   const q = query.trim().toLowerCase();
   if (!q) return summaries;
   return summaries.filter((s) => {
-    const haystack = `${deriveTitle(s)} ${s.lastSnippet}`.toLowerCase();
+    const haystack = `${deriveTitle(s)} ${s.lastSnippet} ${s.searchText ?? ""}`.toLowerCase();
     return haystack.includes(q);
   });
 }

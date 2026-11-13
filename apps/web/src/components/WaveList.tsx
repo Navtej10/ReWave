@@ -70,8 +70,8 @@ export function WaveList(props: {
           <input
             type="search"
             className="rw-wavelist-search sketch sketch-c"
-            placeholder="Search waves"
-            aria-label="Search waves by title or snippet"
+            placeholder="Search waves, files, polls"
+            aria-label="Search waves by title, snippet, file name or poll question"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />

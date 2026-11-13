@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 import { HocuspocusProvider, type HocuspocusProviderWebsocket } from "@hocuspocus/provider";
-import { applyDiff } from "./applyDiff";
 import { resolveLocks, type EditClaim } from "./resolveLocks";
-import type { BlipKind, BlipView, TypingTarget, TyperView } from "./types";
+import * as model from "./blipModel";
+import type { NewBlip } from "./blipModel";
+import type { Attachment, BlipView, Decision, ReactionKey, Stance, TypingTarget, TyperView } from "./types";
+
+export type { NewBlipContent } from "./blipModel";
 
 /** Reported to the index layer whenever this client adds a blip (multi-wave, R1.3/R5.3). */
 export interface AddedBlip {
@@ -46,18 +49,6 @@ const TYPING_IDLE_MS = 4000;
 // Auto-release an edit lock after this long without a keystroke.
 const EDIT_IDLE_MS = 10000;
 
-function readBlips(arr: Y.Array<Y.Map<unknown>>): BlipView[] {
-  return arr.toArray().map((m) => ({
-    id: m.get("id") as string,
-    parentId: (m.get("parentId") as string | null) ?? null,
-    author: m.get("author") as string,
-    kind: m.get("kind") as BlipKind,
-    text: (m.get("text") as Y.Text | undefined)?.toString() ?? "",
-    createdAt: m.get("createdAt") as number,
-    sources: (m.get("sources") as string[] | undefined) ?? [],
-  }));
-}
-
 /** Shape of the fields we put on our own awareness state. */
 interface PresenceState {
   user?: { name?: string };
@@ -84,7 +75,10 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
   const blipsArr = useMemo(() => ydoc?.getArray<Y.Map<unknown>>("blips") ?? null, [ydoc]);
   // Per-wave metadata lives inside the wave's own doc (multi-wave R2): title + createdAt.
   const metaMap = useMemo(() => ydoc?.getMap<unknown>("meta") ?? null, [ydoc]);
+  // The decision log also lives in the wave's own doc.
+  const decisionsArr = useMemo(() => ydoc?.getArray<Decision>("decisions") ?? null, [ydoc]);
   const [blips, setBlips] = useState<BlipView[]>([]);
+  const [decisions, setDecisions] = useState<Decision[]>([]);
   const [peers, setPeers] = useState<string[]>([]);
   const [status, setStatus] = useState<string>("connecting");
   const [typers, setTypers] = useState<TyperView[]>([]);
@@ -147,7 +141,7 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
   }, [waveId, websocket]);
 
   useEffect(() => {
-    if (!conn || !blipsArr || !metaMap) return;
+    if (!conn || !blipsArr || !metaMap || !decisionsArr) return;
     const provider = conn.provider;
     providerRef.current = provider;
     const onStatus = ({ status }: { status: string }) => setStatus(status);
@@ -156,9 +150,13 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
     setStatus((provider as unknown as { status?: string }).status ?? "connecting");
     provider.setAwarenessField("user", { name: me.name });
 
-    const refresh = () => setBlips(readBlips(blipsArr));
+    const refresh = () => setBlips(model.readBlips(blipsArr));
     blipsArr.observeDeep(refresh);
     refresh();
+
+    const refreshDecisions = () => setDecisions(model.readDecisions(decisionsArr));
+    decisionsArr.observe(refreshDecisions);
+    refreshDecisions();
 
     const refreshMeta = () =>
       setMeta({
@@ -206,6 +204,7 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
 
     return () => {
       blipsArr.unobserveDeep(refresh);
+      decisionsArr.unobserve(refreshDecisions);
       metaMap.unobserve(refreshMeta);
       awareness?.off("change", refreshPresence);
       provider.off("status", onStatus);
@@ -217,7 +216,7 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
       if (editIdleTimer.current) clearTimeout(editIdleTimer.current);
       providerRef.current = null;
     };
-  }, [conn, blipsArr, metaMap, me.name]);
+  }, [conn, blipsArr, metaMap, decisionsArr, me.name]);
 
   /** Rename the wave by editing its own `meta.title` (multi-wave R2.3). */
   const renameMeta = useCallback(
@@ -228,34 +227,72 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
   );
 
   const addBlip = useCallback(
-    (opts: { parentId: string | null; text: string; author: string; kind?: BlipKind; sources?: string[] }) => {
+    (opts: NewBlip) => {
       if (!ydoc || !blipsArr) return "";
       const id = crypto.randomUUID().slice(0, 8);
-      const blip = new Y.Map<unknown>();
-      ydoc.transact(() => {
-        blipsArr.push([blip]);
-        blip.set("id", id);
-        blip.set("parentId", opts.parentId);
-        blip.set("author", opts.author);
-        blip.set("kind", opts.kind ?? "human");
-        blip.set("createdAt", Date.now());
-        blip.set("sources", opts.sources ?? []);
-        blip.set("text", new Y.Text(opts.text));
-      });
-      onBlipAddedRef.current?.({ author: opts.author, text: opts.text, at: Date.now() });
+      model.insertBlip(ydoc, blipsArr, opts, id, Date.now());
+      // Content-only blips (a poll, a file) still give the inbox a useful snippet.
+      const summaryText =
+        opts.text || opts.poll?.question || opts.attachments?.map((a) => a.name).join(", ") || opts.link?.title || "";
+      onBlipAddedRef.current?.({ author: opts.author, text: summaryText, at: Date.now() });
       return id;
     },
     [ydoc, blipsArr],
   );
 
-  const editBlip = useCallback(
-    (id: string, text: string) => {
-      if (!blipsArr) return;
-      const m = blipsArr.toArray().find((b) => b.get("id") === id);
-      const t = m?.get("text") as Y.Text | undefined;
-      if (t) applyDiff(t, text);
+  /** Run a write against one blip's Y.Map, if the doc and blip exist. */
+  const withBlip = useCallback(
+    (id: string, fn: (doc: Y.Doc, m: Y.Map<unknown>) => void) => {
+      if (!ydoc || !blipsArr) return;
+      const m = model.findBlip(blipsArr, id);
+      if (m) fn(ydoc, m);
     },
-    [blipsArr],
+    [ydoc, blipsArr],
+  );
+
+  const editBlip = useCallback(
+    (id: string, text: string) => withBlip(id, (doc, m) => model.editText(doc, m, text, Date.now(), me.name)),
+    [withBlip, me.name],
+  );
+
+  /** Patch one attachment (upload finished / failed, alt text, ...). */
+  const updateAttachment = useCallback(
+    (blipId: string, attachmentId: string, patch: Partial<Attachment>) =>
+      withBlip(blipId, (_doc, m) => model.patchAttachment(m, attachmentId, patch)),
+    [withBlip],
+  );
+
+  const toggleReaction = useCallback(
+    (blipId: string, key: ReactionKey) => withBlip(blipId, (doc, m) => model.toggleReaction(doc, m, key, me.name)),
+    [withBlip, me.name],
+  );
+
+  const setStance = useCallback(
+    (blipId: string, stance: Stance | null) => withBlip(blipId, (doc, m) => model.setStance(doc, m, me.name, stance)),
+    [withBlip, me.name],
+  );
+
+  const vote = useCallback(
+    (blipId: string, optionId: string) => withBlip(blipId, (doc, m) => model.castVote(doc, m, me.name, optionId, Date.now())),
+    [withBlip, me.name],
+  );
+
+  const closePoll = useCallback((blipId: string) => withBlip(blipId, (_doc, m) => m.set("pollClosed", true)), [withBlip]);
+
+  const togglePin = useCallback(
+    (blipId: string) => withBlip(blipId, (_doc, m) => m.set("pinned", m.get("pinned") !== true)),
+    [withBlip],
+  );
+
+  /** Soft delete (the UI hides a deleted blip that has no replies). */
+  const deleteBlip = useCallback((blipId: string) => withBlip(blipId, (doc, m) => model.softDelete(doc, m)), [withBlip]);
+
+  const addDecisions = useCallback(
+    (items: Array<Pick<Decision, "text" | "sourceBlipId" | "sourceLabel">>) => {
+      if (!decisionsArr) return;
+      model.appendDecisions(decisionsArr, items, me.name, Date.now(), () => crypto.randomUUID().slice(0, 8));
+    },
+    [decisionsArr, me.name],
   );
 
   /**
@@ -320,6 +357,7 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
 
   return {
     blips,
+    decisions,
     peers,
     status,
     typers,
@@ -327,6 +365,14 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
     meta,
     addBlip,
     editBlip,
+    updateAttachment,
+    toggleReaction,
+    setStance,
+    vote,
+    closePoll,
+    togglePin,
+    deleteBlip,
+    addDecisions,
     setTyping,
     setEditing,
     renameMeta,

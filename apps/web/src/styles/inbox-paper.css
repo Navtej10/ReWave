@@ -158,3 +158,85 @@
   .rw-app .rw-joinwave,
   .rw-app .rw-wavelist-search { min-height: 44px; }
 }
+
+/* ---------- Share-link Join / invalid-link screens ---------- */
+.rw-app .rw-join-card {
+  color: var(--ink);
+  background: var(--paper-card);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--sketch-b);
+  box-shadow: var(--shadow-ink);
+}
+.rw-app .rw-join-mark {
+  font-family: var(--font-display);
+  color: var(--blue-deep);
+  -webkit-text-stroke: 1px var(--ink);
+  paint-order: stroke fill;
+}
+.rw-app .rw-join-mark--bad { color: var(--terracotta); }
+.rw-app .rw-join-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--ink);
+}
+.rw-app .rw-join-sub { color: var(--ink-soft); }
+.rw-app .rw-join-label { color: var(--ink-soft); }
+.rw-app .rw-join-input {
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--sketch-c);
+  box-sizing: border-box;
+}
+.rw-app .rw-join-input::placeholder { color: var(--ink-faint); opacity: 1; }
+.rw-app .rw-join-input:focus {
+  background: var(--paper-card);
+  border-color: var(--ink);
+}
+.rw-app .rw-join-btn {
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--blue);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--sketch-a);
+  box-shadow: var(--shadow-ink);
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    background-color var(--dur) var(--ease);
+}
+.rw-app .rw-join-btn:hover:not(:disabled) {
+  background: var(--blue-deep);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-ink-hover);
+}
+.rw-app .rw-join-btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+.rw-app .rw-join-btn:disabled {
+  opacity: 1;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border-style: dashed;
+  box-shadow: none;
+}
+.rw-app .rw-join-cancel {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.rw-app .rw-join-cancel:hover { background: var(--highlight); text-decoration: underline; }
+.rw-app .rw-join-btn:focus-visible,
+.rw-app .rw-join-cancel:focus-visible,
+.rw-app .rw-join-input:focus-visible {
+  outline: 2px dashed var(--ink);
+  outline-offset: 3px;
+}

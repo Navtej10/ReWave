@@ -62,16 +62,29 @@ function summarize(id: string, blips: Y.Array<Y.Map<unknown>>, meta: Y.Map<unkno
     lastAuthor: "",
     participants: [],
   };
+  const extra: string[] = [];
   blips.forEach((m) => {
+    const poll = m.get("poll") as { question?: string } | undefined;
+    const attachments = m.get("attachments");
+    if (poll?.question) extra.push(poll.question);
+    if (attachments instanceof Y.Map) {
+      attachments.forEach((a) => {
+        const name = (a as { name?: string } | undefined)?.name;
+        if (name) extra.push(name);
+      });
+    }
+    const text = (m.get("text") as Y.Text | undefined)?.toString() ?? "";
     acc = applyBlipToMeta(acc, {
       author: (m.get("author") as string | undefined) ?? "",
-      text: (m.get("text") as Y.Text | undefined)?.toString() ?? "",
+      // Content-only blips (a poll, an image) still get a meaningful list snippet.
+      text: text || poll?.question || "",
       at: (m.get("createdAt") as number | undefined) ?? 0,
     });
   });
   return {
     id,
     ...acc,
+    searchText: extra.join(" "),
     title: (meta.get("title") as string | undefined) ?? "",
     createdAt: (meta.get("createdAt") as number | undefined) ?? acc.createdAt,
   };
