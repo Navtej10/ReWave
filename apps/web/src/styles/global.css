@@ -1,0 +1,124 @@
+/* Global base: paper, type, sketch utilities. */
+
+html {
+  font-size: var(--text-base);
+}
+
+body {
+  margin: 0;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  font-weight: 400;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+a {
+  color: var(--blue-deep);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+::selection {
+  background: var(--highlight);
+  color: var(--ink);
+}
+
+input, textarea {
+  caret-color: var(--ink);
+}
+
+/* Logo only uses the display face. */
+.ink-logo {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0;
+  font-size: 26px;
+  color: var(--ink);
+}
+
+/* ---------- Dusty aged-paper background ----------
+   A fixed layer behind all content: warm cream with soft cloudy tone shifts,
+   scattered dark flecks and fibers, fine grain, and tanned edges. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    /* lighter center, tanned edges */
+    radial-gradient(ellipse at 50% 45%, rgba(255, 249, 232, 0.35) 0%, rgba(255, 249, 232, 0) 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(140, 105, 60, 0) 50%, rgba(140, 105, 60, 0.26) 100%),
+    /* flecks + fibers (600px tile) */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cg fill='%236b5a46'%3E%3Cellipse cx='34' cy='58' rx='1.5' ry='0.8' transform='rotate(30 34 58)' opacity='.5'/%3E%3Cellipse cx='120' cy='211' rx='0.8' ry='0.6' opacity='.55'/%3E%3Cellipse cx='188' cy='34' rx='1.2' ry='0.6' transform='rotate(120 188 34)' opacity='.42'/%3E%3Cellipse cx='262' cy='128' rx='2' ry='1' transform='rotate(60 262 128)' opacity='.34'/%3E%3Cellipse cx='341' cy='77' rx='0.7' ry='0.7' opacity='.6'/%3E%3Cellipse cx='415' cy='188' rx='1.4' ry='0.7' transform='rotate(155 415 188)' opacity='.45'/%3E%3Cellipse cx='512' cy='52' rx='0.9' ry='0.5' transform='rotate(20 512 52)' opacity='.5'/%3E%3Cellipse cx='566' cy='143' rx='1.8' ry='0.9' transform='rotate(95 566 143)' opacity='.32'/%3E%3Cellipse cx='72' cy='320' rx='0.8' ry='0.8' opacity='.55'/%3E%3Cellipse cx='156' cy='402' rx='1.6' ry='0.8' transform='rotate(40 156 402)' opacity='.4'/%3E%3Cellipse cx='233' cy='296' rx='0.7' ry='0.5' opacity='.6'/%3E%3Cellipse cx='305' cy='370' rx='1.1' ry='0.6' transform='rotate(75 305 370)' opacity='.48'/%3E%3Cellipse cx='388' cy='318' rx='2.1' ry='1.1' transform='rotate(10 388 318)' opacity='.3'/%3E%3Cellipse cx='470' cy='410' rx='0.9' ry='0.6' transform='rotate(130 470 410)' opacity='.55'/%3E%3Cellipse cx='548' cy='338' rx='0.7' ry='0.7' opacity='.5'/%3E%3Cellipse cx='28' cy='480' rx='1.3' ry='0.7' transform='rotate(65 28 480)' opacity='.42'/%3E%3Cellipse cx='104' cy='553' rx='0.8' ry='0.5' opacity='.58'/%3E%3Cellipse cx='199' cy='506' rx='1.7' ry='0.8' transform='rotate(145 199 506)' opacity='.36'/%3E%3Cellipse cx='283' cy='571' rx='0.9' ry='0.9' opacity='.5'/%3E%3Cellipse cx='364' cy='520' rx='1.2' ry='0.6' transform='rotate(25 364 520)' opacity='.46'/%3E%3Cellipse cx='441' cy='572' rx='0.7' ry='0.5' opacity='.6'/%3E%3Cellipse cx='527' cy='498' rx='1.5' ry='0.8' transform='rotate(110 527 498)' opacity='.4'/%3E%3Cellipse cx='90' cy='130' rx='0.6' ry='0.6' opacity='.6'/%3E%3Cellipse cx='318' cy='235' rx='0.6' ry='0.6' opacity='.55'/%3E%3Cellipse cx='590' cy='252' rx='0.9' ry='0.5' transform='rotate(50 590 252)' opacity='.5'/%3E%3C/g%3E%3Cg fill='none' stroke='%237a6a55' stroke-width='0.6' stroke-linecap='round' opacity='.24'%3E%3Cpath d='M20 150 q18 -6 40 -2'/%3E%3Cpath d='M230 60 q14 8 34 4'/%3E%3Cpath d='M430 250 q-20 10 -46 6'/%3E%3Cpath d='M110 440 q22 -4 38 6'/%3E%3Cpath d='M500 450 q-12 -12 -30 -14'/%3E%3Cpath d='M330 160 q10 -8 28 -6'/%3E%3C/g%3E%3C/svg%3E"),
+    /* soft cloudy stains: low-frequency noise tinted brown */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='m' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.009' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.42  0 0 0 0 0.26  0 0 0 1.6 -0.55'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)' opacity='.55'/%3E%3C/svg%3E"),
+    /* fine grain */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.30  0 0 0 0 0.22  0 0 0 0 0.14  0 0 0 1.2 -0.1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat, repeat, repeat, repeat;
+  background-size: 100% 100%, 100% 100%, 600px 600px, 700px 700px, 300px 300px;
+}
+
+/* ---------- Sketchy outline utilities ---------- */
+
+.sketch {
+  position: relative;
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--sketch-a);
+}
+.sketch-a { border-radius: var(--sketch-a); }
+.sketch-b { border-radius: var(--sketch-b); }
+.sketch-c { border-radius: var(--sketch-c); }
+
+/* Rotate variants automatically among siblings (explicit .sketch-a/b/c on
+   the element still applies where .sketch-auto is not set). */
+.sketch-auto:nth-child(3n + 1) { border-radius: var(--sketch-a); }
+.sketch-auto:nth-child(3n + 2) { border-radius: var(--sketch-b); }
+.sketch-auto:nth-child(3n + 3) { border-radius: var(--sketch-c); }
+
+/* Faint second pencil stroke offset by 2px on hover / selected.
+   The #rough displacement filter is applied to this empty, border-only
+   pseudo-element, so it can never distort text. */
+.sketch-double::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border: 1px solid var(--ink);
+  border-radius: inherit;
+  opacity: 0;
+  filter: url(#rough);
+  pointer-events: none;
+  transition: opacity var(--dur) var(--ease);
+}
+.sketch-double:hover::after,
+.sketch-double:focus-visible::after,
+.sketch-double.is-selected::after,
+.sketch-double[aria-selected="true"]::after,
+.sketch-double[aria-current="true"]::after {
+  opacity: 0.25;
+}
+
+.is-selected,
+.sketch[aria-selected="true"],
+.sketch[aria-current="true"] {
+  background-color: var(--paper-selected);
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

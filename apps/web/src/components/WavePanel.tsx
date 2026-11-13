@@ -14,6 +14,7 @@ import { EmptyState } from "./EmptyState";
 import { Composer } from "./Composer";
 import { WaveTitle } from "./WaveTitle";
 import { BackIcon } from "./icons";
+import { Button } from "./ui/index";
 
 /** The open wave (right panel). One instance per wave id — remounted via `key` on switch,
  *  so its provider, typing and edit-lock state are fully fresh (multi-wave R9.5). The title
@@ -189,25 +190,27 @@ function WaveActions(props: { waveId: string; onLeave: () => void }) {
 
   return (
     <div className="rw-waveactions" ref={wrapRef}>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        shape="b"
         className="rw-copylink"
         onClick={copyLink}
         aria-label="Copy invite link"
       >
         {copied ? "Copied" : "Copy invite link"}
-      </button>
+      </Button>
 
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        shape="c"
         className="rw-wavemenu-btn"
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         aria-label="Wave options"
         onClick={() => setMenuOpen((o) => !o)}
       >
-        ⋯
-      </button>
+        ···
+      </Button>
 
       {menuOpen && (
         <ul className="rw-wavemenu" role="menu">

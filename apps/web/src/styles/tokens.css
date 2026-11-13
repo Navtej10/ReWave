@@ -1,0 +1,57 @@
+/* Rewave "ink on parchment" design tokens. Components never hardcode colors. */
+:root {
+  /* Paper */
+  --paper: #f4ecd8;
+  --paper-deep: #e9dfc6;
+  --paper-card: #faf4e4;
+  --paper-selected: #e4d9bf;
+
+  /* Ink (warm brown-black, never pure black) */
+  --ink: #2a2622;
+  --ink-soft: #5a5147;
+  --ink-faint: #8a7f70; /* placeholders / decoration only: ~3.5:1, below AA for body text */
+
+  /* Accents */
+  --blue: #8fb3cc;
+  --blue-deep: #6f95b0;
+  --terracotta: #e5704f;
+  --terracotta-deep: #c95a3b;
+  /* Text on terracotta. Cream on #e5704f is ~2.9:1 (fails AA); ink is ~4.8:1.
+     Swap to var(--paper-card) if you prefer cream over AA. */
+  --on-terracotta: var(--ink);
+
+  --highlight: #f3e6a8;
+  --chip: #e8d9b5;
+  --chip-border: #8a7a55;
+  --success: #7fa66b;
+  --danger: #c4503a;
+
+  /* Shape */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --stroke: 1.5px;
+
+  /* Irregular hand-drawn radii. Rotate through these so neighbors differ. */
+  --sketch-a: 14px 11px 15px 10px / 11px 15px 10px 14px;
+  --sketch-b: 10px 15px 11px 14px / 15px 10px 14px 11px;
+  --sketch-c: 12px 14px 10px 15px / 14px 11px 15px 10px;
+
+  /* Hard, offset, pencil-like. Never blurry. */
+  --shadow-ink: 2px 2px 0 rgba(42, 38, 34, 0.18);
+  --shadow-ink-hover: 3px 3px 0 rgba(42, 38, 34, 0.18);
+
+  /* Type */
+  --font-ui: "Nunito Sans", Karla, "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Gochi Hand", "Caveat Brush", "Rockwell Condensed", "Bookman Old Style", Georgia, serif;
+  --text-base: 14px;
+  --text-xs: 12px;
+
+  /* Motion */
+  --ease: ease-out;
+  --dur: 140ms;
+
+  /* Layout */
+  --sidebar-width: 320px;
+  --bp-desktop: 900px;
+}

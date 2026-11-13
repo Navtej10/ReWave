@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { ChevronDownIcon } from "../pages/WavePage/icons";
+import { Card } from "./ui/index";
 
 /** Reserved slot above the thread for a future decision log. Collapsible, no logic. */
 export function DecisionLog() {
   const [open, setOpen] = useState(true);
   return (
-    <section className="rw-decisions" aria-label="Decision log">
+    <Card className="rw-decisions" shape="a" aria-label="Decision log" role="region">
       <button
         type="button"
         className="rw-decisions-head"
@@ -12,17 +14,13 @@ export function DecisionLog() {
         onClick={() => setOpen((v) => !v)}
       >
         <span className="rw-decisions-title">Decision log</span>
-        <span className={`rw-decisions-caret ${open ? "is-open" : ""}`} aria-hidden="true">
-          ›
-        </span>
+        <ChevronDownIcon className={`rw-decisions-caret ${open ? "" : "is-closed"}`} />
       </button>
       {open && (
-        <div className="rw-decisions-body">
-          <p className="rw-decisions-empty">
-            No decisions yet. Ask <code>@scribe</code> to summarize.
-          </p>
-        </div>
+        <p className="rw-decisions-empty">
+          No decisions yet. Ask <span className="ink-chip rw-mention">@scribe</span> to summarize.
+        </p>
       )}
-    </section>
+    </Card>
   );
 }

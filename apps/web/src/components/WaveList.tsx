@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { filterWaves, type WaveSummary } from "../wave/waveIndex";
 import { WaveListItem } from "./WaveListItem";
+import { SearchIcon } from "../pages/WavePage/icons";
 
 /** Left inbox panel: New wave button, search box, and the keyboard-navigable wave list. */
 export function WaveList(props: {
@@ -58,21 +59,24 @@ export function WaveList(props: {
     <div className="rw-wavelist">
       <div className="rw-wavelist-head">
         <div className="rw-wavelist-actions">
-          <button type="button" className="rw-newwave" onClick={onNewWave}>
+          <button type="button" className="rw-newwave sketch sketch-a" onClick={onNewWave}>
             + New wave
           </button>
-          <button type="button" className="rw-joinwave" onClick={onJoinWave}>
+          <button type="button" className="rw-joinwave sketch sketch-b" onClick={onJoinWave}>
             Join Wave
           </button>
         </div>
-        <input
-          type="search"
-          className="rw-wavelist-search"
-          placeholder="Search waves"
-          aria-label="Search waves by title or snippet"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+        <div className="rw-wavelist-searchbox">
+          <input
+            type="search"
+            className="rw-wavelist-search sketch sketch-c"
+            placeholder="Search waves"
+            aria-label="Search waves by title or snippet"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <SearchIcon className="rw-wavelist-searchicon" />
+        </div>
       </div>
 
       {visible.length === 0 ? (
@@ -82,7 +86,7 @@ export function WaveList(props: {
           ) : (
             <>
               <p className="rw-wavelist-empty-text">No waves yet. Start one.</p>
-              <button type="button" className="rw-newwave" onClick={onNewWave}>
+              <button type="button" className="rw-newwave sketch sketch-a" onClick={onNewWave}>
                 + New wave
               </button>
             </>
@@ -98,6 +102,7 @@ export function WaveList(props: {
           {visible.map((wave, i) => (
             <WaveListItem
               key={wave.id}
+              shape={(["a", "b", "c"] as const)[i % 3]}
               wave={wave}
               selected={wave.id === selectedId}
               someoneHere={presence.has(wave.id)}

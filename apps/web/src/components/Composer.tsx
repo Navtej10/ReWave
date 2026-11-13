@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import type { AgentName } from "../wave/types";
 import { AGENT_NAMES } from "../wave/agents";
-import { SendIcon } from "./icons";
+import { PaperPlaneIcon } from "../pages/WavePage/icons";
+import { Button, Card } from "./ui/index";
 
 /** Sticky bottom composer: growing textarea, Send (Ctrl/Cmd+Enter), quick-insert mentions.
  *  Presentational only — App owns the draft string and the post action. */
@@ -44,14 +45,14 @@ export function Composer(props: {
   const canSend = value.trim().length > 0;
 
   return (
-    <div className="rw-composer">
+    <Card className="rw-composer" shape="c">
       <div className="rw-composer-mentions">
         <span className="rw-composer-hint">Bring in</span>
         {AGENT_NAMES.map((agent) => (
           <button
             key={agent}
             type="button"
-            className="rw-mention-btn"
+            className="ink-chip rw-mention-btn"
             onClick={() => insertMention(agent)}
             aria-label={`Insert @${agent} mention`}
           >
@@ -62,7 +63,7 @@ export function Composer(props: {
       <div className="rw-composer-row">
         <textarea
           ref={ref}
-          className="rw-composer-input"
+          className="sketch sketch-b ink-input rw-composer-input"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
@@ -74,17 +75,18 @@ export function Composer(props: {
           placeholder={placeholder}
           rows={1}
         />
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          shape="a"
           className="rw-send"
           onClick={onSend}
-          disabled={!canSend}
+          aria-disabled={!canSend}
           aria-label="Send blip (Ctrl or Cmd + Enter)"
         >
-          <SendIcon className="rw-send-icon" />
+          <PaperPlaneIcon className="rw-send-icon" />
           <span className="rw-send-text">Send</span>
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }

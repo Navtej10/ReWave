@@ -1,0 +1,442 @@
+/* Open-wave panel (right side): "ink on parchment" look.
+   Loaded after styles.css, so these rules replace the older blue rw- styling there.
+   Colors come from tokens.css only. */
+
+.rw-inbox-main {
+  position: relative;
+  background: transparent;
+  color-scheme: light;
+}
+
+.rw-wavepanel {
+  background: transparent;
+  font-size: var(--text-base);
+  color: var(--ink);
+}
+
+/* ---------- Top bar ---------- */
+.rw-wavepanel .rw-wavepanel-bar {
+  min-height: 56px;
+  padding: 6px 20px 6px 20px;
+  gap: 16px;
+  background: var(--paper-card);
+  border-bottom: var(--stroke) solid var(--ink);
+}
+.rw-wavepanel .rw-wavepanel-meta {
+  gap: 12px;
+}
+
+/* Title: bold heading, borderless until hover/focus. */
+.rw-wavepanel .rw-wavetitle-input {
+  padding: 4px 28px 4px 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+  border: 1px dashed transparent;
+  border-radius: var(--radius-sm);
+  text-overflow: ellipsis;
+}
+.rw-wavepanel .rw-wavetitle-input::placeholder {
+  color: var(--ink);
+  font-weight: 700;
+  opacity: 1;
+}
+.rw-wavepanel .rw-wavetitle:hover .rw-wavetitle-input,
+.rw-wavepanel .rw-wavetitle-input:focus {
+  background: transparent;
+  border-color: var(--ink-soft);
+  padding-left: 6px;
+}
+.rw-wavepanel .rw-wavetitle-pencil {
+  width: 20px;
+  height: 20px;
+  color: var(--ink-soft);
+}
+
+/* Connection status: hollow ring + text. */
+.rw-wavepanel .rw-conn {
+  gap: 7px;
+  font-size: 15px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.rw-wavepanel .rw-conn-dot {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  background: transparent;
+  border: var(--stroke) solid var(--ink-soft);
+  box-shadow: none;
+}
+.rw-wavepanel .rw-conn--connecting .rw-conn-dot {
+  background: transparent;
+  animation: none;
+}
+.rw-wavepanel .rw-conn--connected .rw-conn-dot {
+  background: var(--success);
+  border-color: var(--success);
+  box-shadow: none;
+}
+.rw-wavepanel .rw-conn--disconnected .rw-conn-dot {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Presence avatars: paper chip circle with ink outline (overrides the hashed inline color). */
+.rw-wavepanel .rw-presence-empty {
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+}
+.rw-wavepanel .rw-presence .rw-avatar {
+  margin-left: -4px;
+  border: var(--stroke) solid var(--ink);
+}
+.rw-wavepanel .rw-presence .rw-avatar:first-child {
+  margin-left: 0;
+}
+.rw-wavepanel .rw-avatar {
+  background: var(--chip) !important;
+  color: var(--ink);
+  font-weight: 700;
+  text-shadow: none;
+}
+.rw-wavepanel .rw-avatar--sm {
+  width: 30px;
+  height: 30px;
+  font-size: 12px;
+}
+.rw-wavepanel .rw-avatar--md {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+
+/* Copy link + overflow buttons. */
+.rw-wavepanel .rw-copylink,
+.rw-wavepanel .rw-wavemenu-btn {
+  min-height: 36px;
+  padding: 4px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--stroke) solid var(--ink);
+}
+.rw-wavepanel .rw-copylink:hover,
+.rw-wavepanel .rw-wavemenu-btn:hover {
+  background: var(--paper-deep);
+}
+.rw-wavepanel .rw-wavemenu-btn {
+  width: 36px;
+  min-width: 36px;
+  padding: 0 0 5px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.rw-wavepanel .rw-wavemenu {
+  background: var(--paper-card);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--sketch-b);
+  box-shadow: var(--shadow-ink);
+}
+.rw-wavepanel .rw-wavemenu-item {
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+}
+.rw-wavepanel .rw-wavemenu-item:hover {
+  background: var(--paper-deep);
+}
+.rw-wavepanel .rw-wavemenu-danger {
+  color: var(--danger);
+}
+
+/* Back button (mobile only; hidden on desktop by the base rule). */
+.rw-wavepanel .rw-back {
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--sketch-c);
+  box-shadow: var(--shadow-ink);
+}
+.rw-wavepanel .rw-back:hover {
+  background: var(--paper-deep);
+}
+
+:where(.rw-wavepanel) :focus-visible {
+  outline: 2px dashed var(--ink);
+  outline-offset: 3px;
+}
+
+/* ---------- Body column ---------- */
+.rw-wavepanel .rw-wavepanel-scroll {
+  padding: 0 16px 5px;
+}
+.rw-wavepanel .rw-column {
+  max-width: 680px;
+  padding: 0;
+}
+.rw-wavepanel .rw-composer-dock .rw-column {
+  max-width: 680px;
+}
+
+/* ---------- Banner (torn yellow ribbon) ---------- */
+.rw-wavepanel .rw-banner {
+  margin: 16px 0 0;
+  padding: 12px 20px;
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+.rw-wavepanel .rw-error {
+  margin-top: 16px;
+  padding: 12px 20px;
+  font-size: var(--text-base);
+  color: var(--danger);
+  background: var(--paper-card);
+  border: var(--stroke) solid var(--danger);
+  border-radius: var(--sketch-b);
+}
+
+/* ---------- Mention chip (inline) ---------- */
+.rw-wavepanel .ink-chip.rw-mention {
+  padding: 1px 7px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  border-radius: 5px;
+  vertical-align: baseline;
+}
+
+/* ---------- Decision log ---------- */
+.rw-wavepanel .rw-decisions {
+  margin-top: 22px;
+  padding: 16px 20px 18px;
+  overflow: visible;
+  background: var(--paper-card);
+  border: var(--stroke) solid var(--ink);
+  box-shadow: var(--shadow-ink);
+}
+.rw-wavepanel .rw-decisions-head {
+  padding: 0;
+  color: var(--ink);
+}
+.rw-wavepanel .rw-decisions-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+.rw-wavepanel .rw-decisions-caret {
+  color: var(--ink);
+  transition: transform var(--dur) var(--ease);
+}
+.rw-wavepanel .rw-decisions-caret.is-closed {
+  transform: rotate(-90deg);
+}
+.rw-wavepanel .rw-decisions-empty {
+  margin: 10px 0 0;
+  font-size: var(--text-base);
+  color: var(--ink);
+}
+
+/* ---------- Empty state ---------- */
+.rw-wavepanel .rw-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  margin-top: 28px;
+  padding: 32px 36px;
+  background: var(--paper-card);
+  border: var(--stroke) dashed var(--ink);
+  border-radius: var(--radius-lg);
+}
+.rw-wavepanel .rw-empty-art {
+  width: 150px;
+  height: auto;
+  color: var(--ink);
+}
+.rw-wavepanel .rw-empty-title {
+  margin: 14px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.rw-wavepanel .rw-empty-text {
+  max-width: 340px;
+  margin: 8px 0 0;
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* ---------- Thread ---------- */
+.rw-wavepanel .rw-thread {
+  margin-top: 22px;
+  gap: 8px;
+}
+.rw-wavepanel .rw-children {
+  border-left: 1.5px dashed var(--ink-faint);
+}
+.rw-wavepanel .rw-blip-card {
+  padding: 14px 18px;
+  background: var(--paper-card);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--sketch-a);
+  box-shadow: var(--shadow-ink);
+}
+.rw-wavepanel .rw-blip--own > .rw-blip-card {
+  background: var(--paper-selected);
+  border-left: var(--stroke) solid var(--ink);
+}
+.rw-wavepanel .rw-blip--agent > .rw-blip-card {
+  background: var(--highlight);
+  border-left: var(--stroke) solid var(--ink);
+}
+.rw-wavepanel .rw-blip-body {
+  font-size: var(--text-base);
+}
+.rw-wavepanel .rw-blip-time,
+.rw-wavepanel .rw-lock {
+  color: var(--ink-soft);
+}
+.rw-wavepanel .rw-blip-edit,
+.rw-wavepanel .rw-reply-input {
+  background: var(--paper-card);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--sketch-b);
+}
+.rw-wavepanel .rw-blip-edit:disabled,
+.rw-wavepanel .rw-blip-edit[readonly] {
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+}
+.rw-wavepanel .rw-agent-badge {
+  color: var(--ink);
+  background: var(--blue);
+  border: 1px solid var(--ink);
+}
+.rw-wavepanel .rw-source-chip {
+  color: var(--ink);
+  background: var(--chip);
+  border: 1px solid var(--chip-border);
+}
+.rw-wavepanel .rw-reply-toggle {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rw-wavepanel .rw-reply-send {
+  color: var(--ink);
+  background: var(--blue);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--sketch-c);
+}
+.rw-wavepanel .rw-typing {
+  background: var(--paper-card);
+  border: var(--stroke) solid var(--ink);
+}
+.rw-wavepanel .rw-typing-name {
+  color: var(--ink-soft);
+}
+.rw-wavepanel .rw-dots span {
+  background: var(--ink);
+}
+
+/* ---------- Composer ---------- */
+.rw-wavepanel .rw-composer-dock {
+  padding: 12px 16px 20px;
+  background: none;
+}
+.rw-wavepanel .rw-composer-dock .rw-column {
+  padding: 0;
+}
+.rw-wavepanel .rw-composer {
+  padding: 14px 16px 16px;
+  background: var(--paper-card);
+  border: var(--stroke) solid var(--ink);
+  box-shadow: var(--shadow-ink);
+}
+.rw-wavepanel .rw-composer-mentions {
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.rw-wavepanel .rw-composer-hint {
+  font-size: 13px;
+  color: var(--ink);
+}
+.rw-wavepanel .rw-mention-btn {
+  padding: 3px 13px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--chip);
+  border: 1px solid var(--chip-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease);
+}
+.rw-wavepanel .rw-mention-btn:hover {
+  background: var(--paper-deep);
+}
+.rw-wavepanel .rw-composer-row {
+  align-items: center;
+  gap: 10px;
+}
+.rw-wavepanel .rw-composer-input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  min-height: 48px;
+  max-height: 140px;
+  padding: 10px 12px;
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper-card);
+  resize: none;
+}
+.rw-wavepanel .rw-composer-input:hover {
+  border-color: var(--ink);
+}
+.rw-wavepanel .rw-send {
+  flex: none;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 20px;
+  font-size: var(--text-base);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+  background: var(--blue);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--sketch-a);
+}
+.rw-wavepanel .rw-send:hover:not(:disabled) {
+  background: var(--blue-deep);
+}
+.rw-wavepanel .rw-send[aria-disabled="true"] {
+  cursor: default;
+}
+.rw-wavepanel .rw-send-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+@media (pointer: coarse) {
+  .rw-wavepanel .rw-send,
+  .rw-wavepanel .rw-composer-input,
+  .rw-wavepanel .rw-mention-btn,
+  .rw-wavepanel .rw-copylink,
+  .rw-wavepanel .rw-wavemenu-btn {
+    min-height: 44px;
+  }
+}
