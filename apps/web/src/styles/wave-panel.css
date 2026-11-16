@@ -440,3 +440,76 @@
     min-height: 44px;
   }
 }
+
+/* ---------- People menu (who is here, what they are doing) ---------- */
+.rw-wavepanel .rw-people {
+  position: relative;
+  display: inline-flex;
+}
+.rw-wavepanel .rw-people-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 4px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  cursor: pointer;
+}
+.rw-wavepanel .rw-people-btn:hover {
+  background: var(--paper-deep);
+}
+.rw-wavepanel .rw-people-live {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink);
+}
+.rw-wavepanel .rw-people-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  min-width: 240px;
+  max-width: min(320px, 90vw);
+  padding: 12px;
+  background: var(--paper-card);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--sketch-b);
+  box-shadow: var(--shadow-ink);
+}
+.rw-wavepanel .rw-people-title {
+  margin: 0 0 8px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.rw-wavepanel .rw-people-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.rw-wavepanel .rw-people-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+.rw-wavepanel .rw-people-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.rw-wavepanel .rw-people-me {
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.rw-wavepanel .rw-people-status {
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+}

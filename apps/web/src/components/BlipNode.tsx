@@ -2,6 +2,7 @@ import type { BlipView, TyperView } from "../wave/types";
 import { AgentCard } from "./AgentCards";
 import { BlipCard, type BlipActions } from "./BlipCard";
 import { TypingBubble } from "./TypingBubble";
+import { AgentThinking, type PendingAgent } from "./AgentStatus";
 import { isOwnBlip } from "./ui";
 
 /** Recursive thread item: one blip card (or agent card), then its replies and reply-typers. */
@@ -15,14 +16,17 @@ export function BlipNode(props: {
   myName: string;
   highlightId: string | null;
   decidedIds: Set<string | undefined>;
+  /** Agent calls in flight, shown under the blip they reply to. */
+  pending: PendingAgent[];
   actions: BlipActions;
 }) {
-  const { blip, childrenOf, byId, typers, editors, myName, highlightId, decidedIds, actions } = props;
+  const { blip, childrenOf, byId, typers, editors, myName, highlightId, decidedIds, pending, actions } = props;
   const children = childrenOf.get(blip.id) ?? [];
   const childTypers = typers.filter((t) => t.target === blip.id);
+  const childPending = pending.filter((p) => p.parentId === blip.id);
 
   // A deleted blip with nothing under it disappears entirely.
-  if (blip.deleted && children.length === 0 && childTypers.length === 0) return null;
+  if (blip.deleted && children.length === 0 && childTypers.length === 0 && childPending.length === 0) return null;
 
   const lockedBy = editors.get(blip.id);
   const own = isOwnBlip(blip, myName);
@@ -62,10 +66,13 @@ export function BlipNode(props: {
         />
       )}
 
-      {(children.length > 0 || childTypers.length > 0) && (
+      {(children.length > 0 || childTypers.length > 0 || childPending.length > 0) && (
         <ul className="rw-children">
           {children.map((c) => (
             <BlipNode key={c.id} {...props} blip={c} />
+          ))}
+          {childPending.map((p) => (
+            <AgentThinking key={p.key} agent={p.agent} status={p.status} />
           ))}
           {childTypers.map((t) => (
             <TypingBubble key={`typing-${blip.id}-${t.name}`} name={t.name} />

@@ -1,15 +1,55 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { ChevronDownIcon } from "../pages/WavePage/icons";
 import { PinIcon } from "./rich/richIcons";
+import { RichText } from "./rich/markdownLite";
 import { relativeTime } from "./ui";
 import { blipExcerpt } from "../wave/format";
+import { decisionsToMarkdown } from "../wave/decisions";
 import type { BlipView, Decision } from "../wave/types";
-import { Card } from "./ui/index";
+import { Button, Card, Input } from "./ui/index";
+
+const MAX_DECISION_CHARS = 600;
+
+export interface DecisionLogProps {
+  decisions?: Decision[];
+  myName?: string;
+  /** Jump to the blip a decision (or a [b:id] citation inside it) points at. */
+  onJump?: (blipId: string) => void;
+  /** Record a decision by hand. */
+  onAdd?: (text: string) => void;
+  onRemove?: (id: string) => void;
+  /** Ask @scribe to summarize the whole wave. Humans trigger this; agents never start it. */
+  onAskScribe?: () => void;
+  /** Scribe is already working, or the wave has nothing to summarize yet. */
+  scribeDisabled?: boolean;
+  scribeBusy?: boolean;
+}
 
 /** Collapsible decision log above the thread. Entries are synced in the wave's own doc. */
-export function DecisionLog(props: { decisions?: Decision[]; onJump?: (blipId: string) => void }) {
-  const { decisions = [], onJump } = props;
+export function DecisionLog(props: DecisionLogProps) {
+  const { decisions = [], myName = "", onJump, onAdd, onRemove, onAskScribe, scribeDisabled, scribeBusy } = props;
   const [open, setOpen] = useState(true);
+  const [draft, setDraft] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const text = draft.trim();
+    if (!text || !onAdd) return;
+    onAdd(text.slice(0, MAX_DECISION_CHARS));
+    setDraft("");
+  }
+
+  async function copy() {
+    try {
+      await navigator.clipboard?.writeText(decisionsToMarkdown(decisions));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard blocked (insecure context): nothing useful to show.
+    }
+  }
+
   return (
     <Card className="rw-decisions" shape="a" aria-label="Decision log" role="region">
       <button
@@ -23,31 +63,74 @@ export function DecisionLog(props: { decisions?: Decision[]; onJump?: (blipId: s
         </span>
         <ChevronDownIcon className={`rw-decisions-caret ${open ? "" : "is-closed"}`} />
       </button>
-      {open &&
-        (decisions.length === 0 ? (
-          <p className="rw-decisions-empty">
-            No decisions yet. Ask <span className="ink-chip rw-mention">@scribe</span> to summarize.
-          </p>
-        ) : (
-          <ul className="rc-decisions">
-            {decisions.map((d) => (
-              <li key={d.id} className="rc-decision">
-                <span className="rc-decision__text">{d.text}</span>
-                <span className="rc-decision__meta">
-                  {d.author} &middot; {relativeTime(d.createdAt)}
-                  {d.sourceBlipId && onJump ? (
-                    <>
-                      {" \u00b7 "}
-                      <button type="button" className="rc-linkbtn" onClick={() => onJump(d.sourceBlipId!)}>
-                        {d.sourceLabel === "poll" ? "View poll" : "View source"}
-                      </button>
-                    </>
+      {open && (
+        <>
+          {decisions.length === 0 ? (
+            <p className="rw-decisions-empty">
+              No decisions yet. Ask <span className="ink-chip rw-mention">@scribe</span> to summarize, or record one below.
+            </p>
+          ) : (
+            <ul className="rc-decisions">
+              {decisions.map((d) => (
+                <li key={d.id} className="rc-decision rc-decision--entry">
+                  <div className="rc-decision__main">
+                    <div className="rc-decision__text">
+                      <RichText text={d.text} currentUserName={myName} onJump={onJump} />
+                    </div>
+                    <span className="rc-decision__meta">
+                      {d.author} &middot; {relativeTime(d.createdAt)}
+                      {d.sourceBlipId && onJump ? (
+                        <>
+                          {" \u00b7 "}
+                          <button type="button" className="rc-linkbtn" onClick={() => onJump(d.sourceBlipId!)}>
+                            {d.sourceLabel === "poll" ? "View poll" : "View source"}
+                          </button>
+                        </>
+                      ) : null}
+                    </span>
+                  </div>
+                  {onRemove ? (
+                    <button
+                      type="button"
+                      className="rc-linkbtn"
+                      onClick={() => onRemove(d.id)}
+                      aria-label={`Remove decision: ${d.text.replace(/\[b:[^\]]+\]/g, "").trim().slice(0, 60)}`}
+                    >
+                      Remove
+                    </button>
                   ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ))}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="rc-decisions-tools">
+            {onAskScribe ? (
+              <Button variant="secondary" onClick={onAskScribe} aria-disabled={scribeDisabled} disabled={scribeDisabled}>
+                {scribeBusy ? "@scribe is reading\u2026" : "Ask @scribe to summarize"}
+              </Button>
+            ) : null}
+            {decisions.length > 0 ? (
+              <Button variant="ghost" onClick={() => void copy()} aria-live="polite">
+                {copied ? "Copied" : "Copy as Markdown"}
+              </Button>
+            ) : null}
+          </div>
+          {onAdd ? (
+            <form className="rc-decision-form" onSubmit={submit}>
+              <Input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                maxLength={MAX_DECISION_CHARS}
+                placeholder="Record a decision, e.g. Ship on Friday"
+                aria-label="Record a decision"
+              />
+              <Button type="submit" variant="primary" disabled={!draft.trim()}>
+                Add
+              </Button>
+            </form>
+          ) : null}
+        </>
+      )}
     </Card>
   );
 }

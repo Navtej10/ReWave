@@ -1,7 +1,7 @@
 # Tasks: Decision log and catch-up
 
-- [ ] 1. Pin an agent blip as the decision log
-- [ ] 2. Show the log above the thread
-- [ ] 3. Catch-up digest on reopen
-- [ ] 4. Paste-in import (the solo-judge path)
+- [x] 1. Decision log fed by @scribe (a synced Y.Array in the wave doc, not a pinned blip)
+- [x] 2. Show the log above the thread (citations link to blips; add, remove, copy as Markdown)
+- [x] 3. Catch-up digest on reopen
+- [x] 4. Paste-in import (the solo-judge path)
 - [ ] 5. Demo script: paste a 40-message argument, get the log, @skeptic, playback

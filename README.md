@@ -30,10 +30,10 @@ Planned: pinned decision log, catch-up digest, paste-in import, playback. See `.
 
 ## Run it locally
 
-Requirements: Node 20+, Python 3.11+, an Anthropic API key.
+Requirements: Node 20+, Python 3.11+, a Groq API key.
 
 ```bash
-cp .env.example apps/api/.env      # add your ANTHROPIC_API_KEY
+cp .env.example apps/api/.env      # add your GROQ_API_KEY
 npm install
 
 npm run dev:collab                 # terminal 1: sync server on :1234

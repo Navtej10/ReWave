@@ -240,3 +240,18 @@
   outline: 2px dashed var(--ink);
   outline-offset: 3px;
 }
+
+/* ---------- Blank right panel (no wave open) ---------- */
+.rw-app .rw-inbox-blank-mark {
+  font-family: var(--font-display);
+  font-size: 56px;
+  color: var(--blue-deep);
+  -webkit-text-stroke: 1.2px var(--ink);
+  paint-order: stroke fill;
+}
+.rw-app .rw-inbox-blank-text {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--ink);
+  max-width: 32ch;
+}

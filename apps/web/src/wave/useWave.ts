@@ -4,7 +4,7 @@ import { HocuspocusProvider, type HocuspocusProviderWebsocket } from "@hocuspocu
 import { resolveLocks, type EditClaim } from "./resolveLocks";
 import * as model from "./blipModel";
 import type { NewBlip } from "./blipModel";
-import type { Attachment, BlipView, Decision, ReactionKey, Stance, TypingTarget, TyperView } from "./types";
+import type { Attachment, BlipView, Decision, ReactionKey, Stance, TypingTarget, TyperView, PersonView } from "./types";
 
 export type { NewBlipContent } from "./blipModel";
 
@@ -80,6 +80,7 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
   const [blips, setBlips] = useState<BlipView[]>([]);
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [peers, setPeers] = useState<string[]>([]);
+  const [people, setPeople] = useState<PersonView[]>([]);
   const [status, setStatus] = useState<string>("connecting");
   const [typers, setTypers] = useState<TyperView[]>([]);
   const [editors, setEditors] = useState<Map<string, string>>(new Map());
@@ -180,6 +181,20 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
           .filter((n): n is string => Boolean(n)),
       );
 
+      // People: one entry per name, with what they are doing right now.
+      const byName = new Map<string, PersonView>();
+      for (const [id, s] of states) {
+        const name = s.user?.name;
+        if (!name) continue;
+        const activity = s.editing != null ? "editing" : s.typing != null ? "typing" : null;
+        const prev = byName.get(name);
+        byName.set(name, {
+          name,
+          isMe: (prev?.isMe ?? false) || id === myId,
+          activity: prev?.activity ?? activity,
+        });
+      }
+      setPeople(Array.from(byName.values()));
       // Typers: everyone except me who has a typing target set.
       setTypers(
         states
@@ -295,6 +310,12 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
     [decisionsArr, me.name],
   );
 
+  const removeDecision = useCallback(
+    (id: string) => {
+      if (decisionsArr) model.removeDecision(decisionsArr, id);
+    },
+    [decisionsArr],
+  );
   /**
    * Broadcast where (if anywhere) I am composing. Pass a parent blip id, "root" for a
    * new top-level blip, or null to clear. Updates are throttled and auto-clear after
@@ -359,6 +380,7 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
     blips,
     decisions,
     peers,
+    people,
     status,
     typers,
     editors,
@@ -373,6 +395,7 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
     togglePin,
     deleteBlip,
     addDecisions,
+    removeDecision,
     setTyping,
     setEditing,
     renameMeta,

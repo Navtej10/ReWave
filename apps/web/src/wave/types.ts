@@ -139,6 +139,15 @@ export type AgentName = "scribe" | "skeptic" | "researcher";
 export type TypingTarget = string | "root";
 
 /** Someone (not you) currently typing, as surfaced by useWave(). */
+/** One person connected to the wave right now (deduplicated by name). */
+export interface PersonView {
+  name: string;
+  /** True for the local user. */
+  isMe: boolean;
+  /** What they are doing right now, if anything. */
+  activity: "typing" | "editing" | null;
+}
+/** Someone (not you) currently typing, as surfaced by useWave(). */
 export interface TyperView {
   /** Parent blip id, or "root" for a new top-level blip. */
   target: TypingTarget;

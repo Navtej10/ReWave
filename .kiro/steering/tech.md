@@ -2,7 +2,7 @@
 
 - Web: TypeScript (strict), React 18, Vite. Copy-paste-ready TS, no `any`.
 - Live sync: Yjs CRDT over Hocuspocus (apps/collab). NOT operational transformation.
-- Agents API: FastAPI (apps/api) calling the Anthropic API; model name comes from ANTHROPIC_MODEL.
+- Agents API: FastAPI (apps/api) calling the Groq API (model `openai/gpt-oss-120b`); model name comes from GROQ_MODEL.
 - Tests: Vitest; property-based tests with fast-check for sync/merge logic.
 
 ## Conventions

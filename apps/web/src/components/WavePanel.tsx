@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HocuspocusProviderWebsocket } from "@hocuspocus/provider";
 import { useWave, type AddedBlip, type SharedConn } from "../wave/useWave";
 import { askAgent, mentionedAgents } from "../wave/agents";
+import { loadLastVisit, newSince, saveLastVisit } from "../wave/catchUp";
+import { IMPORT_AUTHOR, type ImportedMessage } from "../wave/importThread";
 import { buildInviteLink } from "../wave/waveId";
 import { deriveTitle } from "../wave/waveIndex";
 import {
@@ -16,11 +18,14 @@ import {
 import { uid } from "../wave/format";
 import { stanceCounts, stanceSummaryText } from "../wave/polls";
 import { UploadQueue, createHttpUploadService, type UploadService, type UploadUpdate } from "../wave/uploadService";
-import type { Attachment, BlipView, CodeSnippet, LinkPreview, Poll } from "../wave/types";
+import type { AgentName, Attachment, BlipView, CodeSnippet, LinkPreview, Poll } from "../wave/types";
 import { ConnectionStatus } from "./ConnectionStatus";
-import { PresenceBar } from "./PresenceBar";
+import { PeopleMenu } from "./PeopleMenu";
 import { DecisionLog, PinnedPanel } from "./DecisionLog";
 import { DisconnectedBanner } from "./DisconnectedBanner";
+import { AgentFailures, AgentThinking, type AgentFailure, type PendingAgent } from "./AgentStatus";
+import { CatchUpCard } from "./CatchUpCard";
+import { ImportThread } from "./ImportThread";
 import { BlipNode } from "./BlipNode";
 import type { BlipActions } from "./BlipCard";
 import { TypingBubble } from "./TypingBubble";
@@ -49,6 +54,26 @@ interface LocalUpload {
   blobUrl: string;
 }
 
+/** A minimal human BlipView, for snapshots sent to agents before the synced copy arrives. */
+function plainBlip(id: string, author: string, text: string): BlipView {
+  return {
+    id,
+    parentId: null,
+    author,
+    kind: "human",
+    text,
+    createdAt: Date.now(),
+    sources: [],
+    contentKind: "text",
+    attachments: [],
+    reactions: {},
+    stances: {},
+    pinned: false,
+    editedBy: [],
+    deleted: false,
+  };
+}
+
 /** The open wave (right panel). One instance per wave id — remounted via `key` on switch,
  *  so its provider, typing and edit-lock state are fully fresh (multi-wave R9.5). The title
  *  is read from and written to the wave's own `meta` map. */
@@ -63,10 +88,12 @@ export function WavePanel(props: {
 }) {
   const { waveId, me, websocket, getConn, onBlipAdded, onBack, onLeave } = props;
   const wave = useWave(waveId, me, { websocket, getConn, onBlipAdded });
-  const { blips, decisions, peers, status, typers, editors, meta, addBlip, setTyping, renameMeta } = wave;
+  const { blips, decisions, people, status, typers, editors, meta, addBlip, setTyping, renameMeta } = wave;
 
   const [draft, setDraft] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingAgent[]>([]);
+  const [failures, setFailures] = useState<AgentFailure[]>([]);
+  const [importOpen, setImportOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [tab, setTab] = useState<WaveTab>("thread");
   const [uploads, setUploads] = useState<Record<string, LocalUpload>>({});
@@ -239,6 +266,14 @@ export function WavePanel(props: {
     setJump((j) => ({ id: blipId, n: (j?.n ?? 0) + 1 }));
   }, []);
 
+  /** Blip to scroll to once it shows up in the thread (e.g. a summary the user just asked for). */
+  const [revealId, setRevealId] = useState<string | null>(null);
+  useEffect(() => {
+    if (revealId && liveBlips.some((b) => b.id === revealId)) {
+      setRevealId(null);
+      jumpTo(revealId);
+    }
+  }, [revealId, liveBlips, jumpTo]);
   useEffect(() => {
     if (!jump) return;
     const li = document.getElementById(`b-${jump.id}`);
@@ -254,26 +289,97 @@ export function WavePanel(props: {
 
   /* ---------- Posting ---------- */
 
-  async function runAgents(blipId: string, text: string, posted: BlipView) {
-    const asked = mentionedAgents(text);
-    if (asked.length === 0) return;
-    const snapshot = [...liveBlips, posted];
-    const stances = stanceSummaryText(stanceCounts(snapshot));
-    for (const agent of asked) {
+  /** Latest thread for callbacks that run after an await (agent retry, digest). */
+  const liveRef = useRef(liveBlips);
+  liveRef.current = liveBlips;
+
+  /**
+   * Ask one agent about `snapshot` and post its answer under `parentId`. Only ever called from a
+   * human action (a mention, a button, an import). Failures never remove the human's blip.
+   */
+  const runAgent = useCallback(
+    async (agent: AgentName, parentId: string | null, snapshot: BlipView[], revealResult = false) => {
+      const key = uid("run");
+      setFailures((prev) => prev.filter((f) => !(f.agent === agent && f.parentId === parentId)));
+      setPending((prev) => [...prev, { key, agent, parentId }]);
       try {
-        const out = await askAgent(agent, snapshot, stances);
-        addBlip({ parentId: blipId, text: out.text, author: `@${agent}`, kind: "agent", sources: out.sources, card: out.card });
+        const out = await askAgent(agent, snapshot, stanceSummaryText(stanceCounts(snapshot)), {
+          onStatus: (status) => setPending((prev) => prev.map((p) => (p.key === key ? { ...p, status } : p))),
+        });
+        if (!out.text.trim() && !out.card) throw new Error(`@${agent} had nothing to add. Try again.`);
+        const newId = actionsRef.current.addBlip({
+          parentId,
+          text: out.text,
+          author: `@${agent}`,
+          kind: "agent",
+          sources: out.sources,
+          card: out.card,
+        });
+        if (revealResult && newId) setRevealId(newId);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        const message = e instanceof Error ? e.message : String(e);
+        setFailures((prev) => [...prev, { key, agent, parentId, message }]);
+      } finally {
+        setPending((prev) => prev.filter((p) => p.key !== key));
       }
-    }
+    },
+    [],
+  );
+
+  function runAgents(blipId: string, text: string, posted: BlipView) {
+    const snapshot = [...liveBlips, posted];
+    for (const agent of mentionedAgents(text)) void runAgent(agent, blipId, snapshot);
   }
 
+  const retryAgent = useCallback(
+    (f: AgentFailure) => {
+      setFailures((prev) => prev.filter((x) => x.key !== f.key));
+      void runAgent(f.agent, f.parentId, liveRef.current);
+    },
+    [runAgent],
+  );
+
+  const scribeBusy = pending.some((p) => p.agent === "scribe");
+
+  /* ---------- Catch-up digest (spec 04 R2) ---------- */
+  // When this browser last looked at the wave. Read once; saved again when the panel closes.
+  const [lastVisit] = useState(() => loadLastVisit(localStorage, waveId));
+  const [openedAt] = useState(() => Date.now());
+  useEffect(() => {
+    const save = () => saveLastVisit(localStorage, waveId, Date.now());
+    window.addEventListener("pagehide", save);
+    return () => {
+      window.removeEventListener("pagehide", save);
+      save();
+    };
+  }, [waveId]);
+  // Only blips that existed when the panel opened: blips arriving live are not "missed".
+  const missed = useMemo(
+    () => newSince(liveBlips, lastVisit, me.name).filter((b) => b.createdAt <= openedAt),
+    [liveBlips, lastVisit, me.name, openedAt],
+  );
+
+  /* ---------- Import a pasted thread (spec 04 R3) ---------- */
+  function importThread(messages: ImportedMessage[]) {
+    setImportOpen(false);
+    const snapshot: BlipView[] = [];
+    for (const m of messages) {
+      // Imported speakers are labelled so nobody can be impersonated by a paste.
+      const author = m.author === IMPORT_AUTHOR ? IMPORT_AUTHOR : `${m.author} (imported)`;
+      const id = addBlip({ parentId: null, text: m.text, author });
+      if (!id) {
+        setNotice("Still connecting to the wave. Try the import again in a moment.");
+        return;
+      }
+      snapshot.push(plainBlip(id, author, m.text));
+    }
+    const last = snapshot[snapshot.length - 1];
+    if (last) void runAgent("scribe", last.id, snapshot);
+  }
   function send() {
     const { text, code } = extractFencedCode(draft.trim());
     const attachments = trayAttachments;
     if (!text && !code && attachments.length === 0 && !pollDraft) return;
-    setError(null);
     const parentId = replyTo?.id ?? null;
     const content: { attachments: Attachment[]; poll?: Poll; link?: LinkPreview; code?: CodeSnippet } = {
       attachments,
@@ -307,7 +413,7 @@ export function WavePanel(props: {
       editedBy: [],
       deleted: false,
     };
-    void runAgents(id, text, posted);
+    runAgents(id, text, posted);
     setDraft("");
     setTrayIds([]);
     setLink(null);
@@ -356,22 +462,37 @@ export function WavePanel(props: {
         <WaveTitle title={title} rawTitle={rawTitle} onRename={renameMeta} />
         <div className="rw-wavepanel-meta">
           <ConnectionStatus status={status} />
-          <PresenceBar names={peers} />
-          <WaveActions waveId={waveId} onLeave={onLeave} />
+          <PeopleMenu people={people} />
+          <WaveActions waveId={waveId} onLeave={onLeave} onImport={() => setImportOpen(true)} />
         </div>
       </div>
 
       <div className="rw-wavepanel-scroll">
         <div className="rw-column">
           <DisconnectedBanner status={status} />
-          <DecisionLog decisions={decisions} onJump={jumpTo} />
+          <CatchUpCard
+            fresh={missed}
+            busy={scribeBusy}
+            onDigest={() => void runAgent("scribe", null, missed)}
+            onJumpFirst={() => missed[0] && jumpTo(missed[0].id)}
+          />
+          <DecisionLog
+            decisions={decisions}
+            myName={me.name}
+            onJump={jumpTo}
+            onAdd={(text) => wave.addDecisions([{ text }])}
+            onRemove={wave.removeDecision}
+            onAskScribe={() => void runAgent("scribe", null, liveRef.current, true)}
+            scribeBusy={scribeBusy}
+            scribeDisabled={scribeBusy || liveBlips.length === 0 || !online}
+          />
           <PinnedPanel pinned={pinned} onJump={jumpTo} onUnpin={(id) => wave.togglePin(id)} />
 
-          {error && (
-            <p className="rw-error" role="alert">
-              {error}
-            </p>
-          )}
+          <AgentFailures
+            failures={failures}
+            onRetry={retryAgent}
+            onDismiss={(key) => setFailures((prev) => prev.filter((f) => f.key !== key))}
+          />
 
           <WaveTabs tab={tab} onChange={setTab} />
 
@@ -399,9 +520,15 @@ export function WavePanel(props: {
                         myName={me.name}
                         highlightId={highlightId}
                         decidedIds={decidedIds}
+                        pending={pending}
                         actions={actions}
                       />
                     ))}
+                    {pending
+                      .filter((p) => p.parentId === null)
+                      .map((p) => (
+                        <AgentThinking key={p.key} agent={p.agent} status={p.status} />
+                      ))}
                     {rootTypers.map((t) => (
                       <TypingBubble key={`typing-root-${t.name}`} name={t.name} />
                     ))}
@@ -443,6 +570,7 @@ export function WavePanel(props: {
         </div>
       </div>
 
+      {importOpen ? <ImportThread onCancel={() => setImportOpen(false)} onImport={importThread} /> : null}
       <DropOverlay visible={drop.dragging} />
 
       {lightbox ? (
@@ -474,8 +602,8 @@ export function WavePanel(props: {
 }
 
 /** Copy-invite-link button + an overflow menu with "Leave wave" (spec 07-share-links R6). */
-function WaveActions(props: { waveId: string; onLeave: () => void }) {
-  const { waveId, onLeave } = props;
+function WaveActions(props: { waveId: string; onLeave: () => void; onImport: () => void }) {
+  const { waveId, onLeave, onImport } = props;
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -532,6 +660,19 @@ function WaveActions(props: { waveId: string; onLeave: () => void }) {
 
       {menuOpen && (
         <ul className="rw-wavemenu" role="menu">
+          <li role="none">
+            <button
+              type="button"
+              role="menuitem"
+              className="rw-wavemenu-item"
+              onClick={() => {
+                setMenuOpen(false);
+                onImport();
+              }}
+            >
+              Import a thread
+            </button>
+          </li>
           <li role="none">
             <button
               type="button"

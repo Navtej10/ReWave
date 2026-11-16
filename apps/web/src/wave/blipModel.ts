@@ -315,3 +315,9 @@ export function appendDecisions(
   }
   if (fresh.length > 0) arr.push(fresh);
 }
+
+/** Remove one decision by id (no-op if a collaborator already removed it). */
+export function removeDecision(arr: Y.Array<Decision>, id: string): void {
+  const index = arr.toArray().findIndex((d) => d.id === id);
+  if (index >= 0) arr.delete(index, 1);
+}
