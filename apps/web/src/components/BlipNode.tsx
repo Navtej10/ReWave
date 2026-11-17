@@ -1,9 +1,18 @@
+import type { ReactNode } from "react";
 import type { BlipView, TyperView } from "../wave/types";
 import { AgentCard } from "./AgentCards";
 import { BlipCard, type BlipActions } from "./BlipCard";
 import { TypingBubble } from "./TypingBubble";
 import { AgentThinking, type PendingAgent } from "./AgentStatus";
 import { isOwnBlip } from "./ui";
+
+/** Decision replay: shows the thread read-only and marks cited / current blips. */
+export interface ReplayDecor {
+  /** DOM id prefix, so replay blips never reuse the live thread's `b-<id>` ids. */
+  idPrefix: string;
+  className: (blipId: string) => string;
+  badge: (blipId: string) => ReactNode;
+}
 
 /** Recursive thread item: one blip card (or agent card), then its replies and reply-typers. */
 export function BlipNode(props: {
@@ -19,8 +28,10 @@ export function BlipNode(props: {
   /** Agent calls in flight, shown under the blip they reply to. */
   pending: PendingAgent[];
   actions: BlipActions;
+  /** Decision replay: render read-only and mark blips. */
+  replay?: ReplayDecor;
 }) {
-  const { blip, childrenOf, byId, typers, editors, myName, highlightId, decidedIds, pending, actions } = props;
+  const { blip, childrenOf, byId, typers, editors, myName, highlightId, decidedIds, pending, actions, replay } = props;
   const children = childrenOf.get(blip.id) ?? [];
   const childTypers = typers.filter((t) => t.target === blip.id);
   const childPending = pending.filter((p) => p.parentId === blip.id);
@@ -39,12 +50,14 @@ export function BlipNode(props: {
     blip.pinned ? "rc-is-pinned" : "",
     blip.card ? "rc-has-card" : "",
     highlightId === blip.id ? "rc-highlight" : "",
+    replay?.className(blip.id) ?? "",
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
-    <li className={classes} id={`b-${blip.id}`}>
+    <li className={classes} id={`${replay?.idPrefix ?? "b-"}${blip.id}`}>
+      {replay?.badge(blip.id)}
       {blip.card && !blip.deleted ? (
         <AgentCard
           blip={blip}
@@ -63,6 +76,7 @@ export function BlipNode(props: {
           lockedBy={lockedBy}
           decided={decidedIds.has(blip.id)}
           actions={actions}
+          readOnly={Boolean(replay)}
         />
       )}
 

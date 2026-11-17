@@ -18,6 +18,7 @@
 import * as Y from "yjs";
 import { applyDiff } from "./applyDiff";
 import { deriveKind } from "./attachments";
+import { decisionSources } from "./decisionSources";
 import type {
   AgentCardData,
   Attachment,
@@ -295,13 +296,18 @@ export function softDelete(doc: Y.Doc, m: Y.Map<unknown>): void {
   });
 }
 
-/** Append decisions, skipping ones already logged from the same source blip. */
+/**
+ * Append decisions, skipping ones already logged from the same source blip.
+ * `ctx.blipIds` (all blips now, thread order) fills `threadLength` and `sourceBlipIds`.
+ * Dedupe stays source + text: the new fields are derived from those, so they never change identity.
+ */
 export function appendDecisions(
   arr: Y.Array<Decision>,
   items: Array<Pick<Decision, "text" | "sourceBlipId" | "sourceLabel">>,
   author: string,
   now: number,
   newId: () => string,
+  ctx?: { blipIds: readonly string[] },
 ): void {
   const existing = arr.toArray();
   const seen = new Set(existing.map((e) => `${e.sourceBlipId ?? ""}\u0000${e.text}`));
@@ -311,7 +317,19 @@ export function appendDecisions(
     const key = `${d.sourceBlipId ?? ""}\u0000${text}`;
     if (!text || seen.has(key)) continue;
     seen.add(key);
-    fresh.push(clean({ id: newId(), text, createdAt: now, author, sourceBlipId: d.sourceBlipId, sourceLabel: d.sourceLabel }));
+    const cited = ctx ? decisionSources({ text }, ctx.blipIds) : [];
+    fresh.push(
+      clean({
+        id: newId(),
+        text,
+        createdAt: now,
+        author,
+        sourceBlipId: d.sourceBlipId,
+        sourceLabel: d.sourceLabel,
+        sourceBlipIds: cited.length > 0 ? cited : undefined,
+        threadLength: ctx?.blipIds.length,
+      }),
+    );
   }
   if (fresh.length > 0) arr.push(fresh);
 }

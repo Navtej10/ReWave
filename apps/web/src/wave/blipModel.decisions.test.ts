@@ -16,4 +16,15 @@ describe("decision log", () => {
     removeDecision(arr, "missing");
     expect(arr.toArray().map((d) => d.text)).toEqual(["Hire QA"]);
   });
+
+  it("records threadLength always and sourceBlipIds only for existing cited blips", () => {
+    const arr = new Y.Doc().getArray<Decision>("decisions");
+    let n = 0;
+    appendDecisions(arr, [{ text: "Ship [b:a1] [b:ghost]" }, { text: "Hire QA" }], "Asha", 1, () => `d${++n}`, { blipIds: ["a1", "b2"] });
+    const [first, second] = arr.toArray();
+    expect(first.sourceBlipIds).toEqual(["a1"]);
+    expect(first.threadLength).toBe(2);
+    expect(second.sourceBlipIds).toBeUndefined();
+    expect(second.threadLength).toBe(2);
+  });
 });

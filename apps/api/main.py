@@ -5,7 +5,7 @@ import re
 import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Iterator, NamedTuple
+from typing import Any, Iterator, Literal, NamedTuple
 from urllib.parse import quote, urlparse
 
 import groq
@@ -16,9 +16,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from agents import AGENTS, CARD_FORMAT, RESEARCHER_LOOKUP_NOTE
+from agents import AGENTS, CARD_FORMAT, NARRATOR_PROMPT, RESEARCHER_LOOKUP_NOTE, SPEC_EXPORT_PROMPT
 from guards import CallGuard, Limits, RateLimited, check_size
 from lookups import McpFetcher, PageLookupError, is_public_url
+from narration import validate_captions
+from spec_export import clean as _clean_spec_text, is_thin, thin_spec, validate_spec
 
 load_dotenv()
 
@@ -264,6 +266,150 @@ def _agent_events(agent: str, p: Prepared, model_client: Groq) -> Iterator[dict[
     yield {"type": "done", "text": text, "sources": sources, "card": card}
 
 
+class NarrateRequest(BaseModel):
+    blips: list[BlipIn]
+    decision: str
+
+
+class CaptionOut(BaseModel):
+    atBlipId: str
+    text: str
+
+
+class NarrateResponse(BaseModel):
+    captions: list[CaptionOut]
+
+
+NARRATE_BLIP_CHARS = 600
+NARRATE_DECISION_CHARS = 600
+
+
+def _flat(text: str, limit: int) -> str:
+    """One line, so a blip cannot fake a `[b:id]` line of its own; capped to keep the call cheap."""
+    return " ".join(text.split())[:limit]
+
+
+def _narration_messages(req: NarrateRequest, decision: str) -> list[dict[str, str]]:
+    lines = [
+        f"[b:{b.id}] {_flat(b.author, 60)}{' (reply to ' + b.parentId + ')' if b.parentId else ''}: {_flat(b.text, NARRATE_BLIP_CHARS)}"
+        for b in req.blips
+    ]
+    user = "Thread blips, in order:\n" + "\n".join(lines) + f"\n\nDecision: {_flat(decision, NARRATE_DECISION_CHARS)}"
+    return [{"role": "system", "content": NARRATOR_PROMPT}, {"role": "user", "content": user}]
+
+
+def _narrate(model_client: Groq, messages: list[dict[str, str]], order: list[str]) -> list[dict[str, str]]:
+    """One non-streaming model call; returns validated captions (possibly empty)."""
+    try:
+        res = model_client.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+            max_completion_tokens=MAX_COMPLETION_TOKENS,
+            reasoning_effort=REASONING_EFFORT,
+            stream=False,
+        )
+    except groq.APIStatusError as e:
+        if e.status_code == 429:
+            raise HTTPException(429, "The model is busy.") from e
+        raise HTTPException(502, f"The model request failed ({e.status_code}).") from e
+    except groq.APIError as e:
+        raise HTTPException(502, "The model could not be reached.") from e
+    content = res.choices[0].message.content if res.choices else None
+    parsed = _first_json_object(content or "")
+    return validate_captions(parsed, order)
+
+
+# Registered before "/agents/{agent}" so the name "narrate" is not read as an agent.
+@app.post("/agents/narrate", response_model=NarrateResponse)
+def narrate(req: NarrateRequest, request: Request) -> NarrateResponse:
+    """Short captions for a decision replay. Runs only when a human clicks Replay
+    (agent-behavior rule 6). Validation failures cost no budget; a real call is charged like any agent run."""
+    decision = req.decision.strip()
+    if not req.blips:
+        raise HTTPException(400, "The replay has no blips to narrate.")
+    if not decision:
+        raise HTTPException(400, "The decision has no text to narrate.")
+    messages = _narration_messages(req, decision)
+    too_big = check_size(LIMITS, len(req.blips), len(messages[1]["content"]))
+    if too_big:
+        raise HTTPException(413, too_big)
+    model_client = client()  # fails with a clear message before any budget is spent
+    try:
+        GUARD.check(request.client.host if request.client else "unknown")
+    except RateLimited as e:
+        raise HTTPException(429, e.message, headers={"Retry-After": str(e.retry_after)}) from e
+    captions = _narrate(model_client, messages, [b.id for b in req.blips])
+    if not captions:
+        raise HTTPException(502, "The narrator returned no usable captions.")
+    return NarrateResponse(captions=[CaptionOut(**c) for c in captions])
+
+
+class ExportBlipIn(BlipIn):
+    kind: Literal["human", "agent"] = "human"
+class SpecExportRequest(BaseModel):
+    decision: str
+    sources: list[ExportBlipIn] = []  # the blips the decision cites
+    context: list[ExportBlipIn] = []  # nearby thread; may repeat sources
+SPEC_MAX_COMPLETION_TOKENS = 4000  # the spec JSON is long, and reasoning tokens count against the budget
+def _spec_messages(req: SpecExportRequest, decision: str) -> tuple[list[dict[str, str]], dict[str, str]]:
+    """The model prompt, and a map of every input blip id to its author (the only valid evidence ids)."""
+    def line(b: ExportBlipIn) -> str:
+        reply = f" (reply to {b.parentId})" if b.parentId else ""
+        return f"[b:{b.id}] {_flat(b.author, 60)}{reply}: {_flat(b.text, NARRATE_BLIP_CHARS)}"
+    author_of: dict[str, str] = {}
+    for b in [*req.sources, *req.context]:
+        author_of.setdefault(b.id, _flat(b.author, 60))
+    source_ids = {b.id for b in req.sources}
+    context = [b for b in req.context if b.id not in source_ids]
+    user = (
+        f"Decision: {_flat(decision, NARRATE_DECISION_CHARS)}\n\n"
+        "SOURCES (blips that support the decision):\n" + "\n".join(line(b) for b in req.sources)
+        + "\n\nCONTEXT (nearby blips):\n" + "\n".join(line(b) for b in context)
+    )
+    return [{"role": "system", "content": SPEC_EXPORT_PROMPT}, {"role": "user", "content": user}], author_of
+def _generate_spec(model_client: Groq, messages: list[dict[str, str]]) -> dict[str, Any] | None:
+    try:
+        res = model_client.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+            max_completion_tokens=SPEC_MAX_COMPLETION_TOKENS,
+            reasoning_effort=REASONING_EFFORT,
+            stream=False,
+        )
+    except groq.APIStatusError as e:
+        if e.status_code == 429:
+            raise HTTPException(429, "The model is busy.") from e
+        raise HTTPException(502, f"The model request failed ({e.status_code}).") from e
+    except groq.APIError as e:
+        raise HTTPException(502, "The model could not be reached.") from e
+    content = res.choices[0].message.content if res.choices else None
+    return _first_json_object(content or "")
+@app.post("/export/spec")
+def export_spec(req: SpecExportRequest, request: Request) -> dict[str, Any]:
+    """Draft a Kiro spec from a decision and its thread. Runs only when a human clicks Export
+    (agent-behavior rule 6). Validation failures and thin threads cost no budget."""
+    decision = req.decision.strip()
+    if not decision:
+        raise HTTPException(400, "The decision has no text to export.")
+    if not req.sources and not req.context:
+        raise HTTPException(400, "There are no blips to export.")
+    messages, author_of = _spec_messages(req, decision)
+    too_big = check_size(LIMITS, len(author_of), len(messages[1]["content"]))
+    if too_big:
+        raise HTTPException(413, too_big)
+    if is_thin((b.id, b.kind) for b in req.sources):
+        return thin_spec(decision)
+    model_client = client()  # fails with a clear message before any budget is spent
+    try:
+        GUARD.check(request.client.host if request.client else "unknown")
+    except RateLimited as e:
+        raise HTTPException(429, e.message, headers={"Retry-After": str(e.retry_after)}) from e
+    spec = validate_spec(_generate_spec(model_client, messages), author_of)
+    if spec is None:
+        raise HTTPException(502, "The model returned no usable spec.")
+    # The decision is the user's own text, so it is safe to fall back to it.
+    spec["design"]["decision"] = spec["design"]["decision"] or _clean_spec_text(decision, 600)
+    return spec
 @app.post("/agents/{agent}", response_model=AgentResponse)
 def run_agent(agent: str, req: AgentRequest, request: Request) -> AgentResponse:
     prepared, model_client = _prepare(agent, req, request)

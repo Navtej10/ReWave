@@ -26,6 +26,8 @@ import { DisconnectedBanner } from "./DisconnectedBanner";
 import { AgentFailures, AgentThinking, type AgentFailure, type PendingAgent } from "./AgentStatus";
 import { CatchUpCard } from "./CatchUpCard";
 import { ImportThread } from "./ImportThread";
+import { ReplayView } from "./ReplayView";
+import { SpecExportView } from "./SpecExportView";
 import { BlipNode } from "./BlipNode";
 import type { BlipActions } from "./BlipCard";
 import { TypingBubble } from "./TypingBubble";
@@ -88,12 +90,14 @@ export function WavePanel(props: {
 }) {
   const { waveId, me, websocket, getConn, onBlipAdded, onBack, onLeave } = props;
   const wave = useWave(waveId, me, { websocket, getConn, onBlipAdded });
-  const { blips, decisions, people, status, typers, editors, meta, addBlip, setTyping, renameMeta } = wave;
+  const { blips, decisions, replays, saveReplay, people, status, typers, editors, meta, addBlip, setTyping, renameMeta } = wave;
 
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState<PendingAgent[]>([]);
   const [failures, setFailures] = useState<AgentFailure[]>([]);
   const [importOpen, setImportOpen] = useState(false);
+  const [replayDecisionId, setReplayDecisionId] = useState<string | null>(null);
+  const [exportDecisionId, setExportDecisionId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [tab, setTab] = useState<WaveTab>("thread");
   const [uploads, setUploads] = useState<Record<string, LocalUpload>>({});
@@ -246,6 +250,9 @@ export function WavePanel(props: {
   const decidedIds = useMemo(() => new Set(decisions.map((d) => d.sourceBlipId)), [decisions]);
   const pinned = useMemo(() => viewBlips.filter((b) => b.pinned && !b.deleted), [viewBlips]);
   const liveBlips = useMemo(() => viewBlips.filter((b) => !b.deleted), [viewBlips]);
+  // Closes by itself if the open decision is removed (here or by someone else).
+  const replayDecision = replayDecisionId ? (decisions.find((d) => d.id === replayDecisionId) ?? null) : null;
+  const exportDecision = exportDecisionId ? (decisions.find((d) => d.id === exportDecisionId) ?? null) : null;
 
   const firstText = liveBlips.find((b) => b.text.trim())?.text ?? liveBlips[0]?.poll?.question ?? "";
   const title = deriveTitle({ title: meta.title, lastSnippet: firstText });
@@ -478,10 +485,13 @@ export function WavePanel(props: {
           />
           <DecisionLog
             decisions={decisions}
+            blips={blips}
             myName={me.name}
             onJump={jumpTo}
             onAdd={(text) => wave.addDecisions([{ text }])}
             onRemove={wave.removeDecision}
+            onReplay={(d) => setReplayDecisionId(d.id)}
+            onExportSpec={(d) => setExportDecisionId(d.id)}
             onAskScribe={() => void runAgent("scribe", null, liveRef.current, true)}
             scribeBusy={scribeBusy}
             scribeDisabled={scribeBusy || liveBlips.length === 0 || !online}
@@ -571,6 +581,25 @@ export function WavePanel(props: {
       </div>
 
       {importOpen ? <ImportThread onCancel={() => setImportOpen(false)} onImport={importThread} /> : null}
+      {replayDecision ? (
+        <ReplayView
+          key={replayDecision.id}
+          decision={replayDecision}
+          blips={viewBlips}
+          cached={replays[replayDecision.id]}
+          onSaveCaptions={saveReplay}
+          onClose={() => setReplayDecisionId(null)}
+        />
+      ) : null}
+      {exportDecision ? (
+        <SpecExportView
+          key={exportDecision.id}
+          decision={exportDecision}
+          blips={viewBlips}
+          waveId={waveId}
+          onClose={() => setExportDecisionId(null)}
+        />
+      ) : null}
       <DropOverlay visible={drop.dragging} />
 
       {lightbox ? (

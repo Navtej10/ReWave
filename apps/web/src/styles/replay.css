@@ -1,0 +1,131 @@
+/* Decision replay (spec 08). Uses the ink-on-parchment tokens from tokens.css, like the rest of the wave panel. */
+
+.rc-replay-open:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ink-card.rc-replay {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(1040px, 100%);
+  max-height: min(92vh, 900px);
+  max-height: min(92dvh, 900px);
+  padding: 16px 18px;
+  overflow: hidden;
+}
+.rc-replay__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rc-replay__head .rc-dialog__title { margin: 0; }
+.rc-replay__note { margin: 0; font-size: var(--text-xs); color: var(--ink-soft); }
+.rc-replay__empty { margin: 24px 0; color: var(--ink-soft); }
+
+/* Thread (left) and, on the last frame, the decision (right). */
+.rc-replay__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px;
+}
+.rc-replay__body--final { grid-template-columns: minmax(0, 1fr) minmax(240px, 320px); }
+.rc-replay__thread {
+  min-height: 180px;
+  overflow: auto;
+  padding: 8px 8px 12px;
+  background: var(--paper);
+  border: var(--stroke) solid var(--ink-faint);
+  border-radius: var(--radius-md);
+}
+.rc-replay__thread:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.rc-replay-thread { margin: 0; padding: 0; list-style: none; }
+
+/* Read-only: anything that would change the wave is not shown. */
+.rc-replay-thread .ink-btn,
+.rc-replay-thread .rc-linkbtn,
+.rc-replay-thread .rc-acard__actions { display: none; }
+
+.rc-replay-badge {
+  display: inline-block;
+  margin: 0 0 4px;
+  padding: 1px 10px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--on-terracotta);
+  background: var(--terracotta);
+  border-radius: 999px;
+}
+.rc-replay-cited > .rw-blip-card,
+.rc-replay-cited > .rc-acard { background: var(--highlight); }
+.rc-replay-current > .rw-blip-card,
+.rc-replay-current > .rc-acard {
+  outline: 2px dashed var(--ink);
+  outline-offset: 3px;
+  animation: rc-replay-in 150ms var(--ease) 1;
+}
+@keyframes rc-replay-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.rc-replay__decision {
+  align-self: start;
+  max-height: 100%;
+  overflow: auto;
+  padding: 12px 14px;
+  background: var(--highlight);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius-md);
+}
+.rc-replay__decision-title { margin: 0 0 6px; font-size: var(--text-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.rc-replay__decision-text { font-weight: 700; font-size: 15px; overflow-wrap: anywhere; }
+.rc-replay__decision-meta { margin: 8px 0 0; font-size: var(--text-xs); color: var(--ink-soft); }
+
+.rc-replay__caption {
+  min-height: 3.4em;
+  padding: 8px 12px;
+  font-size: 15px;
+  line-height: 1.45;
+  background: var(--paper-deep);
+  border-radius: var(--radius-md);
+}
+.rc-replay__notice { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+.rc-replay__controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rc-replay__controls .ink-btn { min-height: 40px; }
+.rc-replay__scrub { flex: 1 1 160px; min-width: 120px; min-height: 40px; accent-color: var(--terracotta-deep); }
+.rc-replay__count { min-width: 5ch; font-size: 13px; text-align: right; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.rc-replay__speed { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.rc-replay__speed select {
+  min-height: 40px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper-card);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius-sm);
+}
+.rc-replay__foot { display: flex; justify-content: flex-end; }
+
+@media (max-width: 640px) {
+  .ink-card.rc-replay {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    padding: 12px;
+    border-radius: 0;
+  }
+  .rc-replay__body--final { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .rc-replay__decision { max-height: 34vh; max-height: 34dvh; }
+  .rc-replay__thread { min-height: 120px; }
+  .rc-replay__controls .ink-btn,
+  .rc-replay__speed select,
+  .rc-replay__scrub,
+  .rc-replay-open,
+  .rc-replay__head .ink-btn,
+  .rc-replay__foot .ink-btn { min-height: 44px; }
+  .rc-replay__scrub { order: 5; flex-basis: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-replay-current > .rw-blip-card,
+  .rc-replay-current > .rc-acard { animation: none; }
+}

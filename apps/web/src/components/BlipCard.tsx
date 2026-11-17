@@ -52,8 +52,10 @@ export function BlipCard(props: {
   lockedBy?: string;
   decided: boolean;
   actions: BlipActions;
+  /** Show the blip only: no reactions, stances, or reply/pin/edit/delete (decision replay). */
+  readOnly?: boolean;
 }) {
-  const { blip, parent, myName, lockedBy, decided, actions } = props;
+  const { blip, parent, myName, lockedBy, decided, actions, readOnly = false } = props;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editing, setEditingLocal] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -270,15 +272,17 @@ export function BlipCard(props: {
         />
       ) : null}
 
-      <ReactionBar
-        reactions={blip.reactions}
-        me={myName}
-        pickerOpen={pickerOpen}
-        onPickerOpenChange={setPickerOpen}
-        onToggle={(k) => actions.onReact(blip.id, k)}
-      />
+      {readOnly ? null : (
+        <ReactionBar
+          reactions={blip.reactions}
+          me={myName}
+          pickerOpen={pickerOpen}
+          onPickerOpenChange={setPickerOpen}
+          onToggle={(k) => actions.onReact(blip.id, k)}
+        />
+      )}
 
-      {confirming ? (
+      {readOnly ? null : confirming ? (
         <Card
           className="rc-confirm"
           role="alertdialog"

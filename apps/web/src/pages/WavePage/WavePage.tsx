@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, Ribbon } from "../../components/ui/index";
 import "./wave-page.css";
 import { Composer } from "./Composer";
-import { DecisionLog } from "./DecisionLog";
 import { EmptyWave } from "./EmptyWave";
 import { MOCK_SELECTED_ID, MOCK_STATUS, MOCK_USER, MOCK_WAVES } from "./mockData";
 import { Sidebar } from "./Sidebar";
@@ -36,7 +35,6 @@ export function WavePage({
 }: WavePageProps) {
   const [waves, setWaves] = useState<Wave[]>(initialWaves);
   const [selectedId, setSelectedId] = useState<string>(initialSelectedId);
-  const [logOpen, setLogOpen] = useState(true);
   const [status, setStatus] = useState<ConnectionStatus>(initialStatus);
   const [draft, setDraft] = useState("");
 
@@ -107,7 +105,6 @@ export function WavePage({
                 </Ribbon>
               ) : null}
 
-              <DecisionLog open={logOpen} onToggle={() => setLogOpen((v) => !v)} />
 
               {selected && selected.blips.length > 0 ? (
                 <ol className="wp-blips" aria-label="Thread">

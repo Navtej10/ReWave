@@ -92,7 +92,7 @@ export function agentErrorMessage(agent: AgentName, status: number | null, detai
 }
 
 /** FastAPI errors look like `{"detail": "..."}`; fall back to the raw body. */
-function detailOf(body: string): string {
+export function detailOf(body: string): string {
   try {
     const parsed = JSON.parse(body) as { detail?: unknown };
     if (typeof parsed.detail === "string") return parsed.detail;

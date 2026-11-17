@@ -5,6 +5,8 @@ import { resolveLocks, type EditClaim } from "./resolveLocks";
 import * as model from "./blipModel";
 import type { NewBlip } from "./blipModel";
 import type { Attachment, BlipView, Decision, ReactionKey, Stance, TypingTarget, TyperView, PersonView } from "./types";
+import { readReplays, saveReplay as writeReplay } from "./replays";
+import type { ReplayEntry } from "./replayCaptions";
 
 export type { NewBlipContent } from "./blipModel";
 
@@ -77,8 +79,11 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
   const metaMap = useMemo(() => ydoc?.getMap<unknown>("meta") ?? null, [ydoc]);
   // The decision log also lives in the wave's own doc.
   const decisionsArr = useMemo(() => ydoc?.getArray<Decision>("decisions") ?? null, [ydoc]);
+  // Cached replay captions, keyed by decision id (spec 08). Also in the wave's own doc.
+  const replaysMap = useMemo(() => ydoc?.getMap<unknown>("replays") ?? null, [ydoc]);
   const [blips, setBlips] = useState<BlipView[]>([]);
   const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [replays, setReplays] = useState<Record<string, ReplayEntry>>({});
   const [peers, setPeers] = useState<string[]>([]);
   const [people, setPeople] = useState<PersonView[]>([]);
   const [status, setStatus] = useState<string>("connecting");
@@ -142,7 +147,7 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
   }, [waveId, websocket]);
 
   useEffect(() => {
-    if (!conn || !blipsArr || !metaMap || !decisionsArr) return;
+    if (!conn || !blipsArr || !metaMap || !decisionsArr || !replaysMap) return;
     const provider = conn.provider;
     providerRef.current = provider;
     const onStatus = ({ status }: { status: string }) => setStatus(status);
@@ -159,6 +164,9 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
     decisionsArr.observe(refreshDecisions);
     refreshDecisions();
 
+    const refreshReplays = () => setReplays(readReplays(replaysMap));
+    replaysMap.observe(refreshReplays);
+    refreshReplays();
     const refreshMeta = () =>
       setMeta({
         title: (metaMap.get("title") as string | undefined) ?? "",
@@ -220,6 +228,7 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
     return () => {
       blipsArr.unobserveDeep(refresh);
       decisionsArr.unobserve(refreshDecisions);
+      replaysMap.unobserve(refreshReplays);
       metaMap.unobserve(refreshMeta);
       awareness?.off("change", refreshPresence);
       provider.off("status", onStatus);
@@ -231,7 +240,7 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
       if (editIdleTimer.current) clearTimeout(editIdleTimer.current);
       providerRef.current = null;
     };
-  }, [conn, blipsArr, metaMap, decisionsArr, me.name]);
+  }, [conn, blipsArr, metaMap, decisionsArr, replaysMap, me.name]);
 
   /** Rename the wave by editing its own `meta.title` (multi-wave R2.3). */
   const renameMeta = useCallback(
@@ -305,9 +314,10 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
   const addDecisions = useCallback(
     (items: Array<Pick<Decision, "text" | "sourceBlipId" | "sourceLabel">>) => {
       if (!decisionsArr) return;
-      model.appendDecisions(decisionsArr, items, me.name, Date.now(), () => crypto.randomUUID().slice(0, 8));
+      const blipIds = blipsArr ? model.readBlips(blipsArr).map((b) => b.id) : [];
+      model.appendDecisions(decisionsArr, items, me.name, Date.now(), () => crypto.randomUUID().slice(0, 8), { blipIds });
     },
-    [decisionsArr, me.name],
+    [decisionsArr, blipsArr, me.name],
   );
 
   const removeDecision = useCallback(
@@ -316,6 +326,15 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
     },
     [decisionsArr],
   );
+  /** Store replay captions for a decision; returns the entry in effect (see replays.saveReplay). */
+  const saveReplay = useCallback(
+    (decisionId: string, entry: ReplayEntry, force = false): ReplayEntry => {
+      if (!replaysMap) return entry;
+      return writeReplay(replaysMap, decisionId, entry, force);
+    },
+    [replaysMap],
+  );
+
   /**
    * Broadcast where (if anywhere) I am composing. Pass a parent blip id, "root" for a
    * new top-level blip, or null to clear. Updates are throttled and auto-clear after
@@ -379,6 +398,8 @@ export function useWave(waveId: string, me: { name: string }, options: UseWaveOp
   return {
     blips,
     decisions,
+    replays,
+    saveReplay,
     peers,
     people,
     status,

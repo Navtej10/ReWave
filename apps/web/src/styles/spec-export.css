@@ -1,0 +1,65 @@
+/* Spec export (spec 09). Uses the ink-on-parchment tokens from tokens.css, like the rest of the wave panel. */
+.rc-spec-open:disabled { opacity: 0.5; cursor: not-allowed; }
+.ink-card.rc-spec {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(900px, 100%);
+  max-height: min(92vh, 860px);
+  max-height: min(92dvh, 860px);
+  padding: 16px 18px;
+  overflow: auto;
+}
+.rc-spec__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rc-spec__head .rc-dialog__title { margin: 0; }
+.rc-spec__decision { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.rc-spec__note { margin: 0; font-size: var(--text-xs); color: var(--ink-soft); }
+.rc-spec__state { margin: 12px 0; color: var(--ink-soft); }
+.rc-spec__state--error { color: var(--ink); padding: 10px 12px; background: var(--paper-deep); border: var(--stroke) solid var(--danger); border-radius: var(--radius-md); }
+.rc-spec__state--error p { margin: 0 0 8px; }
+.rc-spec__thin { margin: 0; padding: 8px 12px; background: var(--highlight); border: var(--stroke) solid var(--ink); border-radius: var(--radius-md); }
+.rc-spec__tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.rc-spec__tab {
+  min-height: 36px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--paper-card);
+  border: var(--stroke) solid var(--ink-faint);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.rc-spec__tab--on { font-weight: 700; background: var(--highlight); border-color: var(--ink); }
+.rc-spec__tab:focus-visible,
+.rc-spec__text:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.rc-spec__panel { flex: 1 1 auto; min-height: 0; display: flex; }
+.rc-spec__text {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 260px;
+  padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--stroke) solid var(--ink-faint);
+  border-radius: var(--radius-md);
+  resize: vertical;
+  box-sizing: border-box;
+}
+.rc-spec__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.rc-spec__actions .ink-btn { min-height: 40px; }
+.rc-spec__path { margin: 0; font-size: var(--text-xs); color: var(--ink-soft); overflow-wrap: anywhere; }
+.rc-spec__status { margin: 0; min-height: 1.4em; font-size: 13px; color: var(--ink-soft); }
+@media (max-width: 640px) {
+  .ink-card.rc-spec { width: 100%; height: 100%; max-height: none; padding: 12px; border-radius: 0; }
+  .rc-spec-open,
+  .rc-spec__tab,
+  .rc-spec__actions .ink-btn,
+  .rc-spec__head .ink-btn,
+  .rc-spec__state .ink-btn { min-height: 44px; }
+  .rc-spec__actions .ink-btn { flex: 1 1 100%; }
+  .rc-spec__text { min-height: 200px; }
+}

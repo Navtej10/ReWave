@@ -131,6 +131,10 @@ export interface Decision {
   /** The poll / agent blip this decision came from. */
   sourceBlipId?: string;
   sourceLabel?: string;
+  /** Blip ids the decision cites (existing blips only). Absent on legacy decisions. */
+  sourceBlipIds?: string[];
+  /** Number of blips in the wave when the decision was added. Absent on legacy decisions. */
+  threadLength?: number;
 }
 
 export type AgentName = "scribe" | "skeptic" | "researcher";
